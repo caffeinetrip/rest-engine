@@ -1,7 +1,7 @@
 from typing import Dict, List, Any, Type
 from collections import defaultdict
 from components.base_components import *
-from rest.reflection_util import ReflectionUtil
+from rest.utils.reflection_util import ReflectionUtil
 
 class EventSystem:
     _instance = None # type: ignore
@@ -18,6 +18,7 @@ class EventSystem:
             self._register_handlers()
             self._initialized = True
     
+    # ADD NEW INTERACTIONS
     def _register_handlers(self):
         interface_map = {
             IOnEncounterStart: 'encounter_start',

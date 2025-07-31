@@ -24,11 +24,5 @@ class PressSpaceButtonInteractor(BaseInteraction, IOnPressSpaceButton):
         return PriorityLayers.LAST
     
     def on_space(self, context: dict, game: Any = None) -> Any:
-        entity_id = context.get('entity_id')
-        
         print("I'm on click")
-        
-        if game.entities.get(entity_id).components.get('test'):
-            print('ENTITY WITH ID 1 TEST IS TRUE')
-        
         return None
