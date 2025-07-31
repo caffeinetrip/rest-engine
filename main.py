@@ -1,5 +1,6 @@
 from rest import *
 from content_data.entities_data import entities
+from rest.utils.gfx import smooth_approach
 
 # import all interactions
 from behavior import *

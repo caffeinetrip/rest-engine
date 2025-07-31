@@ -38,26 +38,3 @@ class Game:
     def end(self):
         pygame.quit()
         sys.exit()
-
-    # def run(self):
-    #     clock = pygame.time.Clock()
-    #     running = True
-        
-    #     while running:
-            
-    #         if not self.encounter_ready:
-    #             self.queue_event('encounter_ready', {})
-    #             self.encounter_ready = True
-            
-    #         running = self.handle_input()
-            
-    #         results = self.process_events()
-    #         for result in results:
-    #             print(result)
-            
-    #         self.screen.fill((0, 0, 0))
-    #         pygame.display.flip()
-    #         clock.tick(60)
-        
-    #     pygame.quit()
-    #     sys.exit()
