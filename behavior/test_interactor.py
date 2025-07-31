@@ -25,4 +25,11 @@ class PressSpaceButtonInteractor(BaseInteraction, IOnPressSpaceButton):
     
     def on_space(self, context: dict, game: Any = None) -> Any:
         print("I'm on click")
+        
+        for guy in context['guys']:
+            if guy.get_component('test_beh').value:
+                print(guy.entity_id, 'is ready!')
+        
+        
+        
         return None

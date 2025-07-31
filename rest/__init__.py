@@ -2,8 +2,9 @@ from .misc.game import Game
 from .misc.window import Window
 from .mgl.mgl import MGL
 from .mgl.render_object import RenderObject
-from .utils.event_system import EventSystem
+from .event_system.event_system import EventSystem
 from .G import G
+from .misc.input import Input
 
 def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesheet_path=None, input_path=None, 
          font_path=None, flags=0, fps_cap=60, dt_cap=1, frag_path=None, sound_filetype='wav', ):
@@ -22,6 +23,7 @@ def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesh
     G.initialize()
 
     G.window = window
+    G.input = Input(input_path)
     window.mgl = G.mgl
     
     if not window.frag_path:

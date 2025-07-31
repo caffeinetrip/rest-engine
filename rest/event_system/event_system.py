@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 from collections import defaultdict
 from components.base_components import *
-from rest.utils.reflection_util import ReflectionUtil
+from rest.event_system.reflection_util import ReflectionUtil
 
 class EventSystem:
     _instance = None # type: ignore

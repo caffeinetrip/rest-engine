@@ -1,6 +1,6 @@
 from .mgl.mgl import MGL
 from .misc.window import Window
-from .utils.event_system import EventSystem
+from .event_system.event_system import EventSystem
 from .misc.game import Game
 
 class G:
