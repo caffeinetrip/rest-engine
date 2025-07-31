@@ -1,23 +1,20 @@
 import sys
 import pygame
-from content_data.entities_data import entities
-from rest.utils.event_system import EventSystem
 from collections import deque
-
 
 class Game:
     def __init__(self):
         self.event_queue = deque()
-        
         self.queue_event('encounter_start', {})
     
     def load(self):
-        self.entities = entities
-        self.event_system = EventSystem()
+        pass
     
+    # add event
     def queue_event(self, event_type: str, context: dict):
         self.event_queue.append((event_type, context))
     
+    # do event
     def process_events(self):
         results = []
         while self.event_queue:
@@ -39,10 +36,7 @@ class Game:
     def end(self):
         pygame.quit()
         sys.exit()
-        
-        
 
-    
     # def run(self):
     #     clock = pygame.time.Clock()
     #     running = True
@@ -65,4 +59,3 @@ class Game:
         
     #     pygame.quit()
     #     sys.exit()
-

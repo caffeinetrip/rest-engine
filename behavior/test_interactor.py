@@ -1,5 +1,5 @@
 from components.base_components import BaseInteraction, IOnEncounterStart, IOnEncounerReady, IOnPressSpaceButton
-from rest.priority_layers import PriorityLayers
+from content_data.priority_layers import PriorityLayers
 from typing import Any
 
 # TEST INTERACTORS

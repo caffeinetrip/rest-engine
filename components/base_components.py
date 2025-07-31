@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from rest.priority_layers import PriorityLayers
+from content_data.priority_layers import PriorityLayers
 
 class BaseInteraction(ABC):
     @abstractmethod
