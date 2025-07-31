@@ -1,4 +1,3 @@
-# rest/mgl/render_object.py
 import moderngl
 import pygame
 from ..utils.io import read_f

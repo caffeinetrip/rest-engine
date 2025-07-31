@@ -1,4 +1,3 @@
-# rest/G.py
 from .mgl.mgl import MGL
 from .misc.window import Window
 from .utils.event_system import EventSystem

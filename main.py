@@ -1,20 +1,19 @@
-# main.py
-from rest import init, Game, G
+from rest import *
+from content_data.entities_data import entities
+
+# import all interactions
 from behavior import *
-from entities.test_guy import TestGuy
 
 class MyGame(Game):
     def __init__(self):
         super().__init__()
-        self.entities = []
+        self.entities = entities
 
     def load(self):
         self.event_system = G.event_system
-        test_entity = TestGuy('e_testguy1')
-        self.entities.append(test_entity)
 
     def update(self):
-        self.process_events()
+        self.process_all_events()
 
         G.window.cycle(uniforms={'surface': G.window.screen, 'time': G.window.dt})
 

@@ -1,5 +1,5 @@
 from entities.test_guy import TestGuy
-from rest import CMSEntity
+from rest.utils.cms import CMSEntity
 from typing import List, Optional, Dict
 
 class EntityData:

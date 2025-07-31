@@ -1,4 +1,3 @@
-# rest/__init__.py
 from .misc.game import Game
 from .misc.window import Window
 from .mgl.mgl import MGL

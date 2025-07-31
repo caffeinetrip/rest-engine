@@ -1,4 +1,3 @@
-# rest/misc/window.py
 import time
 import pygame
 from ..mgl.mgl import MGL
