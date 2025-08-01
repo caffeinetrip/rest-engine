@@ -98,7 +98,7 @@ class Path(CMSComponentDefinition):
     path: str | None
 
 class Spritesheets(CMSComponentDefinition):
-    value: Dict[str, dict]
+    value: Dict
  
 class Images(CMSComponentDefinition):
     value: Dict

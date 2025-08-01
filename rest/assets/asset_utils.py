@@ -8,7 +8,7 @@ def load_img(path: str, alpha=False, colorkey=None):
         img = pygame.image.load(path).convert_alpha()
         
     else:
-        pygame.image.load(path).convert()
+        img = pygame.image.load(path).convert()
         
     if colorkey:
         img.set_colorkey(colorkey)

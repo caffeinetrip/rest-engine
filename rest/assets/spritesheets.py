@@ -54,7 +54,7 @@ def parse_spritesheet(surf, split_color=(0, 255, 255)):
 
 def load_spritesheets(path, split_color=(0,255,0), colorkey=(0,0,0)) -> Spritesheets:
     
-    spritesheets: Spritesheets = Spritesheets(load_img_directory(path, colorkey))
+    spritesheets: Spritesheets = Spritesheets(load_img_directory(path, colorkey)) # type: ignore
     
     for spritesheet in spritesheets.value:
         
