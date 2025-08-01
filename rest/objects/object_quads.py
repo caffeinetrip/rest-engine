@@ -1,6 +1,5 @@
 
-
-class OQuads:
+class ObjectQuads:
     def __init__(self, quad_size=64):
         self.quad_size = quad_size
         self.reset()

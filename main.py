@@ -9,6 +9,15 @@ class MyGame(Game):
     def __init__(self):
         super().__init__()
         
+        init(
+            dimensions=(800, 600),
+            caption='soma try 1',
+            fps_cap=60,
+            sound_data_path='content_data/sound_data',
+            spritesheet_path='content_data/image_data/spritesheets',
+            input_path='content_data/input_configs.json'
+        )
+        
         # example
         G.assets.load_folder('content_data/image_data/scrolls')
         
@@ -30,15 +39,6 @@ class MyGame(Game):
 
 
 if __name__ == "__main__":
-    
-    engine = init(
-        dimensions=(800, 600),
-        caption='soma try 1',
-        fps_cap=60,
-        sound_data_path='content_data/sound_data',
-        spritesheet_path='content_data/image_data/spritesheets',
-        input_path='content_data/input_configs.json'
-    )
     
     game = MyGame()
     game.run()
