@@ -11,8 +11,6 @@ class Assets:
         self.spritesheet_path = spritesheet_path
         self.spritesheets = load_spritesheets(spritesheet_path, colorkey=colorkey) if spritesheet_path else {}
         
-        self.autotile_config = self.parse_autotile_config(read_tjson(spritesheet_path + '/autotile.json')) if spritesheet_path else {}
-        
         # self.boxer = UIBoxer()
         # self.foliage = FoliageAssets()
         # self.water = WaterManager()
