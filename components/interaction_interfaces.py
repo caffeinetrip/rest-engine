@@ -21,3 +21,8 @@ class IOnPressSpaceButton(ABC):
     @abstractmethod
     def on_space(self, context: dict, game: Any = None) -> Any:
         pass
+
+class IOnLoadFolder(ABC):
+    @abstractmethod
+    def on_load_folder(self, context: dict, game: Any = None) -> Any:
+        pass

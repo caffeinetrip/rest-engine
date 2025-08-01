@@ -1,4 +1,4 @@
-from components.base_components import BaseInteraction, IOnEncounterStart, IOnEncounerReady, IOnPressSpaceButton
+from components.interaction_interfaces import BaseInteraction, IOnEncounterStart, IOnEncounerReady, IOnPressSpaceButton
 from content_data.priority_layers import PriorityLayers
 from typing import Any
 

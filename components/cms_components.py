@@ -1,7 +1,7 @@
 from rest.utils.cms import CMSComponentDefinition
 from dataclasses import dataclass
 import pygame
-from typing import Tuple
+from typing import Tuple, Dict
 
 # engine components (doesn't delete)
 
@@ -107,6 +107,20 @@ class VelocityCaps(CMSComponentDefinition):
 class Bounce(CMSComponentDefinition):
     val: int
 
+# Assets
+# -------------------------------------------------------------------------------------------------------------
+
+@dataclass 
+class Path(CMSComponentDefinition):
+    path: str | None
+
+@dataclass
+class Spritesheets(CMSComponentDefinition):
+    value: Dict[str, dict]
+
+@dataclass 
+class Images(CMSComponentDefinition):
+    value: Dict
 
 # other components
 # -------------------------------------------------------------------------------------------------------------

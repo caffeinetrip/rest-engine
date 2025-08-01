@@ -1,6 +1,6 @@
 from typing import Dict, List, Any
 from collections import defaultdict
-from components.base_components import *
+from components.interaction_interfaces import *
 from rest.event_system.reflection_util import ReflectionUtil
 
 class EventSystem:
@@ -25,7 +25,8 @@ class EventSystem:
         interface_map = {
             IOnEncounterStart: 'encounter_start',
             IOnEncounerReady: 'encounter_ready',
-            IOnPressSpaceButton: 'space'
+            IOnPressSpaceButton: 'space',
+            IOnLoadFolder: 'load_folder'
         }
         
         for interface, event_type in interface_map.items():

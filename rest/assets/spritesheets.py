@@ -3,7 +3,7 @@ import os, pygame
 from rest.utils.io import write_tjson, read_tjson
 from rest.utils.gfx import clip
 from .asset_utils import load_img_directory
-
+from components.cms_components import Spritesheets
 
 def load_spritesheet_config(path):
     config = read_tjson(path, loose=True) if os.path.isfile(path) else {}
@@ -51,3 +51,24 @@ def parse_spritesheet(surf, split_color=(0, 255, 255)):
             loc[1], loc[0], row_start = loc[1] + 1, 0, None
 
     return tiles
+
+def load_spritesheets(path, split_color=(0,255,0), colorkey=(0,0,0)) -> Spritesheets:
+    
+    spritesheets: Spritesheets = Spritesheets(load_img_directory(path, colorkey))
+    
+    for spritesheet in spritesheets.value:
+        
+        spritesheets.value[spritesheet] = {
+            'assets': parse_spritesheet(spritesheets.value[spritesheet], split_color),
+            'config': load_spritesheet_config(f'{path}/{spritesheet}.json')
+        }
+        
+        for tile in spritesheets.value[spritesheet]['assets']:
+            
+            if tile not in spritesheets.value[spritesheet]['config']:
+                spritesheets.value[spritesheet]['config'][tile] = {'offset': (0, 0)}
+            
+            if 'offset' not in spritesheets.value[spritesheet]['config'][tile]:
+                spritesheets.value[spritesheet]['config'][tile]['offset'] = (0, 0)
+    
+    return spritesheets
