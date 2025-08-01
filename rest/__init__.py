@@ -5,12 +5,15 @@ from .mgl.render_object import RenderObject
 from .event_system.event_system import EventSystem
 from .G import G
 from .misc.input import Input
-from .assets.assets import Assets
 from .renderer.renderer import Renderer
-from .objects.object_groups import ObjectGroups
+from .objects.asset_library import AssetLibrary
+from .assets.assets import Assets
+from .objects.object_collections import ObjectCollections
+from .misc.tilemap import Tilemap
+from .misc.camera import Camera
 
-def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesheet_path=None, input_path=None, 
-         font_path=None, flags=0, fps_cap=60, dt_cap=1, frag_path=None, sound_filetype='wav', ):
+def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesheet_path=None,
+         font_path=None, flags=0, fps_cap=60, dt_cap=1, frag_path=None, sound_filetype='wav', entities_path=None):
     
     # initialize window with G
     
@@ -24,13 +27,18 @@ def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesh
     )
 
     G.initialize()
-
+    
     G.window = window
-    G.assets = Assets(spritesheet_path)
-    G.renderer = Renderer()
-    G.object_groups = ObjectGroups()
-    G.input = Input(input_path)
     window.mgl = G.mgl
+    
+    G.assets = Assets(spritesheet_path)
+    G.asset_library = AssetLibrary(entities_path)
+    G.asset_library.assets
+    G.object_collections = ObjectCollections(spatial_collections=['entities'])
+
+    G.renderer = Renderer()
+    G.input = Input()
+    
     
     if not window.frag_path:
         window.render_object = G.mgl.default_ro()

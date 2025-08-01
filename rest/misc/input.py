@@ -1,10 +1,10 @@
-import sys
-import time
 import pygame
-from .. import G
-from ..utils.io import read_json
+import sys
+from rest import G
 
 class InputState:
+    __slots__ = ('pressed', 'just_pressed', 'just_released', 'held_since')
+
     def __init__(self):
         self.pressed = False
         self.just_pressed = False
@@ -15,10 +15,10 @@ class InputState:
         self.just_pressed = False
         self.just_released = False
 
-    def press(self):
+    def press(self, time=None):
         self.pressed = True
         self.just_pressed = True
-        self.held_since = time.time()
+        self.held_since = time or pygame.time.get_ticks() / 1000.0
 
     def unpress(self):
         self.pressed = False
@@ -32,126 +32,149 @@ class Mouse:
 
     def update(self):
         mpos = pygame.mouse.get_pos()
-        self.movement = pygame.Vector2(mpos) - self.pos
-        self.pos = pygame.Vector2(mpos)
-        self.ui_pos = self.pos // 2
+        self.movement.x, self.movement.y = mpos[0] - self.pos.x, mpos[1] - self.pos.y
+        self.pos.x, self.pos.y = mpos[0], mpos[1]
+        self.ui_pos.x, self.ui_pos.y = mpos[0] // 2, mpos[1] // 2
 
 class Input:
-    def __init__(self, path=None):
+    def __init__(self):
         self.state = 'main'
         self.text_buffer = None
-        self.path = path
-        self.config = self._load_config(path)
-        self.config['__backspace'] = ['button', pygame.K_BACKSPACE]
-        self.input_states = {key: InputState() for key in self.config}
-        self.hidden_keys = ['__backspace']
+        self.key_states = {}
+        self.mouse_states = {}
+        self.shift = False
         self.repeat_rate = 0.02
         self.repeat_delay = 0.5
-        self.repeat_timers = {key: 0 for key in self.config}
-        self.shift = False
-        self.mouse = Mouse()
-
-    def _load_config(self, path):
-        if not path:
-            return {}
-        try:
-            return read_json(path)
-        except (IOError, ValueError) as e:
-            print(f"Failed to load input config from {path}: {e}")
-            return {}
-
-    def _get_char_from_key(self, key, shift):
-        if key == pygame.K_SPACE:
-            return ' '
-        name = pygame.key.name(key)
-        if len(name) == 1:
-            char = name
-            if shift:
-                char = char.upper() if char.isalpha() else self._get_shifted_char(char)
-            return char
-        return None
-
-    def _get_shifted_char(self, char):
-        shift_mappings = {
-            '1': '!', '2': '@', '3': '#', '4': '$', '5': '%', '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
-            '-': '_', '=': '+', '[': '{', ']': '}', ';': ':', '\'': '"', ',': '<', '.': '>', '/': '?', '\\': '|'
+        self.last_backspace_time = 0
+        self.valid_chars_set = set(' .abcdefghijklmnopqrstuvwxyz0123456789,;-=/\\[]\'')
+        self._char_code_map = {ord(char): char for char in self.valid_chars_set}
+        self.shift_mappings = {
+            '1': '!', '8': '*', '9': '(', '0': ')', ';': ':', ',': '<',
+            '.': '>', '/': '?', '\'': '"', '-': '_', '=': '+',
         }
-        return shift_mappings.get(char, char)
+        self.mouse_entity = None
+        self.event_handlers = {}
+        self._action_locks = {}
+        self._window_component = None
+
+    def initialize(self):
+        if not self.mouse_entity:
+            self.mouse_entity = G.game.create_singleton("Mouse")
+            self.mouse_entity.add_component(Mouse)
+
+    def register_handler(self, key, handler, priority=0):
+        self.event_handlers[key] = handler
+        if key not in self._action_locks:
+            self._action_locks[key] = False
 
     def pressed(self, key):
-        return self.input_states.get(key, InputState()).just_pressed
+        state = self.key_states.get(key)
+        return state.just_pressed if state else False
 
     def holding(self, key):
-        return self.input_states.get(key, InputState()).pressed
+        state = self.key_states.get(key)
+        return state.pressed if state else False
 
     def released(self, key):
-        return self.input_states.get(key, InputState()).just_released
+        state = self.key_states.get(key)
+        return state.just_released if state else False
+
+    def mouse_pressed(self, button):
+        state = self.mouse_states.get(button)
+        return state.just_pressed if state else False
+
+    def mouse_holding(self, button):
+        state = self.mouse_states.get(button)
+        return state.pressed if state else False
+
+    def mouse_released(self, button):
+        state = self.mouse_states.get(button)
+        return state.just_released if state else False
 
     def set_text_buffer(self, text_buffer=None):
         self.text_buffer = text_buffer
 
-    def update(self):
-        for state in self.input_states.values():
-            state.update()
-        self.mouse.update()
-        current_time = G.window.time if G.window else time.time()
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                G.game.end()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                self._handle_mouse_press(event.button)
-                G.event_system.trigger_event('mouse_press', {'button': event.button})
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self._handle_mouse_release(event.button)
-                G.event_system.trigger_event('mouse_release', {'button': event.button})
-            elif event.type == pygame.KEYDOWN:
-                self._handle_key_press(event, current_time)
-                if event.key != pygame.K_BACKSPACE:
-                    G.event_system.trigger_event('key_press', {'key': event.key})
-            elif event.type == pygame.KEYUP:
-                self._handle_key_release(event)
-                G.event_system.trigger_event('key_release', {'key': event.key})
-
-        if self.text_buffer and self.holding('__backspace'):
-            if current_time > self.repeat_timers['__backspace'] + self.repeat_delay:
-                if current_time > self.repeat_timers['__backspace'] + self.repeat_rate:
-                    self.repeat_timers['__backspace'] = current_time
-                    self.text_buffer.delete()
-
-    def _handle_mouse_press(self, button):
-        for key, (input_type, value) in self.config.items():
-            if input_type == 'mouse' and value == button:
-                self.input_states[key].press()
-
-    def _handle_mouse_release(self, button):
-        for key, (input_type, value) in self.config.items():
-            if input_type == 'mouse' and value == button:
-                self.input_states[key].unpress()
-
-    def _handle_key_press(self, event, current_time):
-        if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
-            self.shift = True
-            return
-        if self.text_buffer:
-            if event.key == pygame.K_BACKSPACE:
-                self.input_states['__backspace'].press()
-                self.repeat_timers['__backspace'] = current_time
-                self.text_buffer.delete()
-            elif event.key == pygame.K_RETURN:
-                self.text_buffer.enter()
-            else:
-                char = self._get_char_from_key(event.key, self.shift)
+    def process_event(self, event):
+        event_type = event.type
+        if event_type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event_type == pygame.MOUSEBUTTONDOWN:
+            if event.button not in self.mouse_states:
+                self.mouse_states[event.button] = InputState()
+            self.mouse_states[event.button].press()
+            self.trigger_action(f"mouse_{event.button}")
+        elif event_type == pygame.MOUSEBUTTONUP:
+            if event.button in self.mouse_states:
+                self.mouse_states[event.button].unpress()
+        elif event_type == pygame.KEYDOWN:
+            if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
+                self.shift = True
+            if event.key not in self.key_states:
+                self.key_states[event.key] = InputState()
+            self.key_states[event.key].press()
+            if self.text_buffer:
+                char = self._char_code_map.get(event.key)
                 if char:
+                    if self.shift:
+                        char = char.upper()
+                    if char in self.shift_mappings:
+                        char = self.shift_mappings[char]
                     self.text_buffer.insert(char)
-        else:
-            for key, (input_type, value) in self.config.items():
-                if input_type == 'button' and value == event.key:
-                    self.input_states[key].press()
+                elif event.key == pygame.K_RETURN:
+                    self.text_buffer.enter()
+                elif event.key == pygame.K_BACKSPACE:
+                    self.text_buffer.delete()
+                    self.last_backspace_time = pygame.time.get_ticks() / 1000.0
+            self.trigger_action(event.key)
+        elif event_type == pygame.KEYUP:
+            if event.key in self.key_states:
+                self.key_states[event.key].unpress()
+            if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
+                self.shift = False
 
-    def _handle_key_release(self, event):
-        if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
-            self.shift = False
-        for key, (input_type, value) in self.config.items():
-            if input_type == 'button' and value == event.key:
-                self.input_states[key].unpress()
+    def trigger_action(self, action):
+        if action not in self._action_locks:
+            self._action_locks[action] = False
+        if self._action_locks[action]:
+            return
+        self._action_locks[action] = True
+        handler = self.event_handlers.get(action)
+        if handler:
+            handler()
+        self._action_locks[action] = False
+
+    def update(self):
+        for state in self.key_states.values():
+            state.update()
+        for state in self.mouse_states.values():
+            state.update()
+        if self.mouse_entity:
+            mouse_comp = self.mouse_entity.get_component(Mouse)
+            if mouse_comp:
+                mouse_comp.update()
+        for event in pygame.event.get():
+            self.process_event(event)
+        if self.text_buffer and self.holding(pygame.K_BACKSPACE):
+            current_time = pygame.time.get_ticks() / 1000.0
+            next_repeat = self.last_backspace_time + self.repeat_delay
+            if current_time > next_repeat:
+                repeats = int((current_time - next_repeat) / self.repeat_rate)
+                if repeats > 0:
+                    self.last_backspace_time += repeats * self.repeat_rate
+                    for _ in range(min(repeats, 10)):
+                        self.text_buffer.delete()
+
+    def get_mouse_position(self):
+        if self.mouse_entity:
+            mouse_comp = self.mouse_entity.get_component(Mouse)
+            if mouse_comp:
+                return mouse_comp.pos
+        return pygame.Vector2(0, 0)
+
+    def get_mouse_ui_position(self):
+        if self.mouse_entity:
+            mouse_comp = self.mouse_entity.get_component(Mouse)
+            if mouse_comp:
+                return mouse_comp.ui_pos
+        return pygame.Vector2(0, 0)

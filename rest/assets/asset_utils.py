@@ -2,17 +2,13 @@ import pygame
 
 from rest.utils.io import recursive_file_op
 
-def load_img(path: str, alpha=False, colorkey=None):
-    
+def load_img(path, alpha=False, colorkey=None):
     if alpha:
         img = pygame.image.load(path).convert_alpha()
-        
     else:
         img = pygame.image.load(path).convert()
-        
     if colorkey:
         img.set_colorkey(colorkey)
-        
     return img
 
 def load_img_directory(path, alpha=False, colorkey=None):

@@ -1,74 +1,69 @@
-import os, pygame
+import os
 
-from rest.utils.io import write_tjson, read_tjson
+import pygame
+
+from rest.utils.io import read_tjson, write_tjson
 from rest.utils.gfx import clip
 from .asset_utils import load_img_directory
-from components.cms_components import Spritesheets
 
 def load_spritesheet_config(path):
-    config = read_tjson(path, loose=True) if os.path.isfile(path) else {}
+    if os.path.isfile(path):
+        config = read_tjson(path, loose=True)
+    else:
+        config = {}
     write_tjson(path, config)
     return config
 
-
 def parse_spritesheet(surf, split_color=(0, 255, 255)):
-    row_start, loc, tiles = None, [0, 0], {}
-
+    row_start = None
+    loc = [0, 0]
+    tiles = {}
     for y in range(surf.get_height() - 1):
-        curr_color = surf.get_at((1, y))
-        next_color = surf.get_at((1, y + 1))
-        left_color = surf.get_at((0, y + 1))
-
-        if (curr_color == split_color and next_color != split_color and left_color == split_color): row_start = y
-
-        if (curr_color != split_color and next_color == split_color and left_color == split_color and row_start is not None):
-            row_bounds_y, col_start = (row_start, y), None
-
+        c1 = surf.get_at((1, y))
+        c2 = surf.get_at((1, y + 1))
+        c3 = surf.get_at((0, y + 1))
+        if (c1 == split_color) and (c2 != split_color) and (c3 == split_color):
+            row_start = y
+        if (c1 != split_color) and (c2 == split_color) and (c3 == split_color) and row_start != None:
+            row_bounds_y = (row_start, y)
+            col_start = None
             for x in range(surf.get_width() - 1):
-                curr_color = surf.get_at((x, row_bounds_y[0] + 1))
-                next_color = surf.get_at((x + 1, row_bounds_y[0] + 1))
-
-                if (curr_color == split_color and next_color != split_color): col_start = x
-
-                if (curr_color != split_color and next_color == split_color and col_start is not None):
+                c1 = surf.get_at((x, row_bounds_y[0] + 1))
+                c2 = surf.get_at((x + 1, row_bounds_y[0] + 1))
+                if (c1 == split_color) and (c2 != split_color):
+                    col_start = x
+                if (c1 != split_color) and (c2 == split_color) and col_start != None:
                     col_bounds_x = (col_start, x)
-
-                    if col_start == 0: tile_bounds_y = row_bounds_y
+                    if col_start == 0:
+                        tile_bounds_y = row_bounds_y
                     else:
                         y2 = row_start
-                        while y2 < surf.get_height() - 1:
-                            curr_color = surf.get_at((col_start + 1, y2))
-                            next_color = surf.get_at((col_start + 1, y2 + 1))
-                            if (curr_color != split_color and next_color == split_color): break
+                        while True:
+                            c1 = surf.get_at((col_start + 1, y2))
+                            c2 = surf.get_at((col_start + 1, y2 + 1))
+                            if (c1 != split_color) and (c2 == split_color):
+                                break
                             y2 += 1
                         tile_bounds_y = (row_start, y2)
-
                     rect = pygame.Rect(col_bounds_x[0] + 1, tile_bounds_y[0] + 1, col_bounds_x[1] - col_bounds_x[0], tile_bounds_y[1] - tile_bounds_y[0])
                     tiles[tuple(loc)] = clip(surf, rect)
                     loc[0] += 1
                     col_start = None
-
-            loc[1], loc[0], row_start = loc[1] + 1, 0, None
-
+            loc[1] += 1
+            loc[0] = 0
+            row_start = None
     return tiles
 
-def load_spritesheets(path, split_color=(0,255,0), colorkey=(0,0,0)) -> Spritesheets:
-    
-    spritesheets: Spritesheets = Spritesheets(load_img_directory(path, colorkey)) # type: ignore
-    
-    for spritesheet in spritesheets.value:
-        
-        spritesheets.value[spritesheet] = {
-            'assets': parse_spritesheet(spritesheets.value[spritesheet], split_color),
-            'config': load_spritesheet_config(f'{path}/{spritesheet}.json')
+def load_spritesheets(path, split_color=(0, 255, 255), colorkey=(0, 0, 0)):
+    spritesheets = load_img_directory(path, colorkey=colorkey)
+    for spritesheet in spritesheets:
+        spritesheets[spritesheet] = {
+            'assets': parse_spritesheet(spritesheets[spritesheet], split_color=split_color),
+            'config': load_spritesheet_config(path + '/' + spritesheet + '.json'),
         }
-        
-        for tile in spritesheets.value[spritesheet]['assets']:
-            
-            if tile not in spritesheets.value[spritesheet]['config']:
-                spritesheets.value[spritesheet]['config'][tile] = {'offset': (0, 0)}
-            
-            if 'offset' not in spritesheets.value[spritesheet]['config'][tile]:
-                spritesheets.value[spritesheet]['config'][tile]['offset'] = (0, 0)
-    
+        for tile in spritesheets[spritesheet]['assets']:
+            if tile not in spritesheets[spritesheet]['config']:
+                spritesheets[spritesheet]['config'][tile] = {'offset': (0, 0)}
+            if 'offset' not in spritesheets[spritesheet]['config'][tile]:
+                spritesheets[spritesheet]['config'][tile]['offset'] = (0, 0)
     return spritesheets

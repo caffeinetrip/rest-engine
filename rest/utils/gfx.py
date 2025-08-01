@@ -28,6 +28,6 @@ def palette_swap(surf, colors):
     surf.set_colorkey(colorkey)
     return surf
 
-def smooth_approach(val, target, slowness=1):
-    val += (target - val) / slowness * min(G.window.dt, slowness)
+def smooth_approach(val, target, dt, slowness=1):
+    val += (target - val) / slowness * min(dt, slowness)
     return val
