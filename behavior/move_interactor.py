@@ -12,8 +12,14 @@ class MoveInteractor(BaseInteraction, IOnEntityMove):
 
         x = context.get('x', 0)
         y = context.get('y', 0)
-        direction = context.get('direction', entity.direction)
-        mirror = context.get('mirror', entity.mirror[0])
+
+        if entity.move_x == 0 and entity.move_y == 0:
+            direction = context.get('direction', entity.direction)
+            mirror = context.get('mirror', entity.mirror[0])
+        else:
+            direction = entity.direction
+            mirror = entity.mirror[0]
+
         max_speed = context.get('max_speed', entity.max_speed)
 
         entity.move_x += x
@@ -26,7 +32,7 @@ class MoveInteractor(BaseInteraction, IOnEntityMove):
         entity.move_y = max(min(entity.move_y, 1), -1)
 
         if entity.move_x != 0 and entity.move_y != 0:
-            entity.max_speed[1] = 40
+            entity.max_speed[0] = 35
         else:
             entity.max_speed[1] = max_speed[1]
 

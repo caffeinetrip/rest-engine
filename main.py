@@ -51,6 +51,7 @@ class MyGame(Game):
         self.event_system = G.event_system
 
     def update(self):
+
         self.display_surface.fill((0, 0, 0, 0))
         self.ui_surface.fill((0, 0, 0, 0))
         self.background_surface.fill((0, 0, 0, 0))
