@@ -1,6 +1,7 @@
 import pygame
 import sys
 from rest import G
+from typing import Dict, List
 
 class InputState:
     __slots__ = ('pressed', 'just_pressed', 'just_released', 'held_since')
@@ -56,6 +57,12 @@ class Input:
         self.event_handlers = {}
         self._action_locks = {}
         self._window_component = None
+        
+        self.keys_events = {
+            'holding': [],
+            'pressed': [],
+            'released': [],
+        }
 
     def initialize(self):
         if not self.mouse_entity:
@@ -144,17 +151,21 @@ class Input:
             handler()
         self._action_locks[action] = False
 
-    def update(self):
+    def update(self, game):
         for state in self.key_states.values():
             state.update()
+
         for state in self.mouse_states.values():
             state.update()
+
         if self.mouse_entity:
             mouse_comp = self.mouse_entity.get_component(Mouse)
             if mouse_comp:
                 mouse_comp.update()
+
         for event in pygame.event.get():
             self.process_event(event)
+
         if self.text_buffer and self.holding(pygame.K_BACKSPACE):
             current_time = pygame.time.get_ticks() / 1000.0
             next_repeat = self.last_backspace_time + self.repeat_delay
@@ -164,6 +175,39 @@ class Input:
                     self.last_backspace_time += repeats * self.repeat_rate
                     for _ in range(min(repeats, 10)):
                         self.text_buffer.delete()
+
+        key_checkers = {
+            'holding': self.holding,
+            'pressed': self.pressed,
+            'released': self.released,
+        }
+
+        for mode, events in self.keys_events.items():
+            check = key_checkers[mode]
+            for event in events:
+                for key in event['keys']:
+                    if check(key):
+                        game.add_event(event['event']['event_type'], event['event']['context'], event['event']['entity'])
+
+    def add_key_event(self, mode, keys, event_type, context, entity = None):
+        
+        if mode in self.keys_events:
+            self.keys_events[mode].append({
+                'keys': keys,
+                'event': {'event_type': event_type, 'context': context, 'entity': entity}
+            })
+
+    def delete_key_event(self, mode, keys, event_type):
+        if mode in self.keys_events:
+            self.keys_events[mode] = [
+                e for e in self.keys_events[mode]
+                if not (e['keys'] == keys and e['event']['event_type'] == event_type)
+            ]
+
+    def clear_keyevents(self):
+        for key in self.keys_events:
+            self.keys_events[key].clear()
+
 
     def get_mouse_position(self):
         if self.mouse_entity:

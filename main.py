@@ -78,7 +78,7 @@ class MyGame(Game):
                            'ui_surf': self.ui_surface}
         G.window.cycle(window_surfaces)
         
-        G.input.update()
+        G.input.update(self)
 
 if __name__ == "__main__":
     game = MyGame()

@@ -26,7 +26,8 @@ class EventSystem:
             IOnEncounterStart: 'encounter_start',
             IOnEncounerReady: 'encounter_ready',
             IOnPressSpaceButton: 'space',
-            IOnLoadFolder: 'load_folder'
+            IOnLoadFolder: 'load_folder',
+            IOnEntityMove: 'move'
         }
         
         for interface, event_type in interface_map.items():
@@ -36,15 +37,18 @@ class EventSystem:
             instances = [cls() for cls in classes]
             instances.sort(key=lambda x: x.priority().value)
             self.handlers[event_type] = instances
+                    
+            print(interface, event_type)
     
-    def trigger_event(self, event_type: str, context: dict, game: Any = None) -> List[Any]:
+    def trigger_event(self, event_type: str, context: dict, entity: Any = None) -> List[Any]:
         results = []
+
         
         for handler in self.handlers.get(event_type, []):
             method_name = f'on_{event_type}'
             
             if hasattr(handler, method_name):
-                result = getattr(handler, method_name)(context, game)
+                result = getattr(handler, method_name)(context, entity)
                 
                 if result is not None:
                     results.append(result)

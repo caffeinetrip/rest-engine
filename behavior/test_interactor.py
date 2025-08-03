@@ -7,7 +7,7 @@ class EncounerStartInteractor(BaseInteraction, IOnEncounterStart):
     def priority(self) -> PriorityLayers:
         return PriorityLayers.NORMAL
     
-    def on_encounter_start(self, context: dict, game: Any = None) -> Any:
+    def on_encounter_start(self, context: dict, entity: Any = None) -> Any:
         print('Start')
         return None
 
@@ -15,7 +15,7 @@ class EncounterReadyInteractor(BaseInteraction, IOnEncounerReady):
     def priority(self) -> PriorityLayers:
         return PriorityLayers.LAST
     
-    def on_encounter_ready(self, context: dict, game: Any = None) -> Any:
+    def on_encounter_ready(self, context: dict, entity: Any = None) -> Any:
         print('Ready')
         return None
 
@@ -23,7 +23,7 @@ class PressSpaceButtonInteractor(BaseInteraction, IOnPressSpaceButton):
     def priority(self) -> PriorityLayers:
         return PriorityLayers.LAST
     
-    def on_space(self, context: dict, game: Any = None) -> Any:
+    def on_space(self, context: dict, entity: Any = None) -> Any:
         print("I'm on click")
         
         for guy in context['guys']:
