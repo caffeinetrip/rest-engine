@@ -1,55 +1,58 @@
 from .object_base import Object
 from rest import G
+from rest.utils.cms import CMSEntity
+from components.engine.moving_object_components import *
 import pygame
 
-WALKABLE_TILES = [
-    'walk_zone',
-]
+WALKABLE_TILES = ['walk_zone']
 
 def apply_friction(value, amount):
     if abs(value) < amount:
         return 0
-    elif value > 0:
-        return value - amount
-    else:
-        return value + amount
+    return value - amount if value > 0 else value + amount
 
-class MovingObject(Object):
-    def __init__(self, position, moving=True, depth=0):
-        super().__init__(position, depth=depth)
-        self.prev_pos = (0, 0)
-        self.speed = [0, 0]
-        self.acceleration = [0, 0]
-        self.size = [16, 16]
-        self.max_speed = [70, 70]
-        self.friction = [0, 0]
-        self.delta_move = [0, 0]
-        self.prev_move = [0, 0]
-        self.rebound = 0
-        self.auto_mirror = 0
-        self.collision_list = []
-        self.collisions = {'up': False, 'down': False, 'right': False, 'left': False}
-        self.pass_through = 0
-        self.no_collide = False
-        self.walkable_only = True
-        self.collision_offsets = [5, 0, -8, -5]
-        self.direction = 'down'
-        self.moving = False
-        self.mirror = [False, False]
-        self.move_x = 0
-        self.move_y = 0
-        self.moving_proccesor = moving
+class MovingObject(CMSEntity):
+    def __init__(self, entity_id, position=(0, 0), moving=True, depth=0):
+        super().__init__(entity_id)
+        self.entity_id = entity_id
+        self.object = Object(entity_id, position, depth)
         
+        self.components = self._initialize_components()
         if moving:
-            self.register_input()
+            self._register_input()
         
         self.initialize()
 
+    def _initialize_components(self):
+        return {
+            'object': self.object,
+            'prev_pos': PrevPos(x=0, y=0),
+            'speed': Speed(x=0.0, y=0.0),
+            'acceleration': Acceleration(x=0.0, y=0.0),
+            'size': Size(width=16, height=16),
+            'max_speed': MaxSpeed(x=70.0, y=70.0),
+            'friction': Friction(x=0.0, y=0.0),
+            'delta_move': DeltaMove(x=0.0, y=0.0),
+            'prev_move': PrevMove(x=0.0, y=0.0),
+            'rebound': Rebound(value=0.0),
+            'auto_mirror': AutoMirror(value=0.0),
+            'collision_list': CollisionList(value=[]),
+            'collisions': Collisions(up=False, down=False, right=False, left=False),
+            'pass_through': PassThrough(value=0.0),
+            'no_collide': NoCollide(value=False),
+            'walkable_only': WalkableOnly(value=True),
+            'collision_offsets': CollisionOffsets(left=5, top=0, right=-8, bottom=-5),
+            'direction': Direction(value='down'),
+            'moving': Moving(value=False),
+            'move_x': MoveX(value=0.0),
+            'move_y': MoveY(value=0.0),
+            'moving_processor': MovingProcessor(value=True),
+        }
+
     @property
     def rebound_factors(self):
-        if type(self.rebound) not in {list, tuple}:
-            return self.rebound, self.rebound
-        return tuple(self.rebound)
+        rebound = self.get_component('rebound').value
+        return tuple(rebound) if isinstance(rebound, (list, tuple)) else (rebound, rebound)
 
     @property
     def center(self):
@@ -57,47 +60,45 @@ class MovingObject(Object):
 
     @property
     def rect(self):
-        return pygame.Rect(*self.prev_pos, *self.size)
+        pos = self.get_component('prev_pos')
+        size = self.get_component('size')
+        return pygame.Rect(pos.x, pos.y, size.width, size.height)
 
     def initialize(self):
         pass
 
     def check_walkable_collision(self, new_position, level_map):
-        if not self.walkable_only:
+        if not self.get_component('walkable_only').value:
             return True
+        
         world_width = level_map.dimensions[0] * level_map.tile_size[0]
         world_height = level_map.dimensions[1] * level_map.tile_size[1]
-        left_offset, top_offset, right_offset, bottom_offset = self.collision_offsets
-        if (new_position[0] - left_offset < 0 or
-                new_position[0] + self.size[0] + right_offset > world_width):
+        offsets = self.get_component('collision_offsets')
+        size = self.get_component('size')
+
+        if (new_position[0] - offsets.left < 0 or
+                new_position[0] + size.width + offsets.right > world_width or
+                new_position[1] - offsets.top < 0 or
+                new_position[1] + size.height + offsets.bottom > world_height):
             return False
-        if (new_position[1] - top_offset < 0 or
-                new_position[1] + self.size[1] + bottom_offset > world_height):
-            return False
+
         corners = [
-            (new_position[0] - left_offset, new_position[1] - top_offset),
-            (new_position[0] + self.size[0] + right_offset, new_position[1] - top_offset),
-            (new_position[0] - left_offset, new_position[1] + self.size[1] + bottom_offset),
-            (new_position[0] + self.size[0] + right_offset, new_position[1] + self.size[1] + bottom_offset)
+            (new_position[0] - offsets.left, new_position[1] - offsets.top),
+            (new_position[0] + size.width + offsets.right, new_position[1] - offsets.top),
+            (new_position[0] - offsets.left, new_position[1] + size.height + offsets.bottom),
+            (new_position[0] + size.width + offsets.right, new_position[1] + size.height + offsets.bottom),
+            (new_position[0] + size.width // 2, new_position[1] + size.height // 2)
         ]
-        center = (new_position[0] + self.size[0] // 2, new_position[1] + self.size[1] // 2)
-        corners.append(center)
-        for corner in corners:
-            grid_x = int(corner[0] // level_map.tile_size[0])
-            grid_y = int(corner[1] // level_map.tile_size[1])
-            if (grid_x, grid_y) in level_map.grid_tiles:
-                found_walkable = False
-                for layer, tile in level_map.grid_tiles[(grid_x, grid_y)].items():
-                    if tile.group in WALKABLE_TILES:
-                        found_walkable = True
-                        break
-                if not found_walkable:
-                    return False
-            else:
+
+        for x, y in corners:
+            grid_x, grid_y = int(x // level_map.tile_size[0]), int(y // level_map.tile_size[1])
+            if (grid_x, grid_y) not in level_map.grid_tiles:
+                return False
+            if not any(tile.group in WALKABLE_TILES for tile in level_map.grid_tiles[(grid_x, grid_y)].values()):
                 return False
         return True
 
-    def register_input(self):
+    def _register_input(self):
         key_configs = [
             {'keys': [pygame.K_LEFT, pygame.K_a], 'x': -1, 'y': 0, 'direction': 'right', 'mirror': True},
             {'keys': [pygame.K_RIGHT, pygame.K_d], 'x': 1, 'y': 0, 'direction': 'right', 'mirror': False},
@@ -106,70 +107,82 @@ class MovingObject(Object):
         ]
 
         for config in key_configs:
-
-            G.input.add_key_event('holding', config['keys'], 'move', {
+            event_data = {
                 'x': config['x'], 'y': config['y'], 'direction': config['direction'],
                 'mirror': config['mirror'], 'max_speed': [70, 70]
-            }, self)
-
-            G.input.add_key_event('released', config['keys'], 'move', {
-                'x': 0, 'y': 0, 'direction': config['direction'],
-                'mirror': config['mirror'], 'max_speed': [70, 70]
-            }, self)
+            }
+            G.input.add_key_event('holding', config['keys'], 'move', event_data, self)
+            G.input.add_key_event('released', config['keys'], 'move', {**event_data, 'x': 0, 'y': 0}, self)
 
     def behavior_update(self):
-        
-        self.move_x = 0
-        self.move_y = 0
-
+        self.get_component('move_x').value = 0
+        self.get_component('move_y').value = 0
 
     def physics_update(self, level_map):
         delta = G.window.dt
         self.behavior_update()
-        if self.delta_move[0] * -self.auto_mirror > 0:
-            self.mirror[0] = True
-        if self.delta_move[0] * self.auto_mirror > 0:
-            self.mirror[0] = False
-        self.delta_move[0] += self.speed[0] * delta
-        self.delta_move[1] += self.speed[1] * delta
-        self.move_with_physics(self.delta_move, level_map)
-        self.prev_move = (self.delta_move[0] / delta, self.delta_move[1] / delta)
-        self.speed[0] += self.acceleration[0] * delta
-        self.speed[1] += self.acceleration[1] * delta
-        self.speed[0] = apply_friction(self.speed[0], self.friction[0] * delta)
-        self.speed[1] = apply_friction(self.speed[1], self.friction[1] * delta)
-        self.speed[0] = max(-self.max_speed[0], min(self.max_speed[0], self.speed[0]))
-        self.speed[1] = max(-self.max_speed[1], min(self.max_speed[1], self.speed[1]))
-        self.delta_move = [0, 0]
-        self.pass_through = max(0, self.pass_through - delta)
+
+        delta_move = self.get_component('delta_move')
+        auto_mirror = self.get_component('auto_mirror').value
+        if delta_move.x * -auto_mirror > 0:
+            self.get_component('object').get_component('mirror').flip_x = True
+        elif delta_move.x * auto_mirror > 0:
+            self.get_component('object').get_component('mirror').flip_x = False
+
+        delta_move.x += self.get_component('speed').x * delta
+        delta_move.y += self.get_component('speed').y * delta
+        self.move_with_physics(delta_move, level_map)
+
+        self.get_component('prev_move').x = delta_move.x / delta
+        self.get_component('prev_move').y = delta_move.y / delta
+        self.get_component('speed').x += self.get_component('acceleration').x * delta
+        self.get_component('speed').y += self.get_component('acceleration').y * delta
+        self.get_component('speed').x = apply_friction(self.get_component('speed').x, self.get_component('friction').x * delta)
+        self.get_component('speed').y = apply_friction(self.get_component('speed').y, self.get_component('friction').y * delta)
+        self.get_component('speed').x = max(-self.get_component('max_speed').x, min(self.get_component('max_speed').x, self.get_component('speed').x))
+        self.get_component('speed').y = max(-self.get_component('max_speed').y, min(self.get_component('max_speed').y, self.get_component('speed').y))
+        delta_move.x = delta_move.y = 0
+        self.get_component('pass_through').value = max(0, self.get_component('pass_through').value - delta)
 
     def apply_impulse(self, vector):
-        self.delta_move[0] += vector[0] * G.window.dt
-        self.delta_move[1] += vector[1] * G.window.dt
+        delta_move = self.get_component('delta_move')
+        delta_move.x += vector[0] * G.window.dt
+        delta_move.y += vector[1] * G.window.dt
+
+    def handle_collisions(self, movement, tiles):
+        pass
 
     def move_with_physics(self, movement, level_map):
-        self.collision_list = []
-        self.prev_pos = tuple(self.position)
-        self.collisions = {'up': False, 'down': False, 'right': False, 'left': False}
-        if self.walkable_only:
-            if movement[1] != 0:
-                test_pos_y = [self.position[0], self.position[1] + movement[1]]
+        collision_list = self.get_component('collision_list')
+        prev_pos = self.get_component('prev_pos')
+        collisions = self.get_component('collisions')
+        obj_pos = self.get_component('object').get_component('position')
+
+        collision_list.value = []
+        prev_pos.x, prev_pos.y = obj_pos.x, obj_pos.y
+        collisions.up = collisions.down = collisions.right = collisions.left = False
+
+        if self.get_component('walkable_only').value:
+            if movement.y != 0:
+                test_pos_y = [obj_pos.x, obj_pos.y + movement.y]
                 if self.check_walkable_collision(test_pos_y, level_map):
-                    self.position[1] += movement[1]
+                    obj_pos.y += movement.y
                 else:
-                    self.collisions['down' if movement[1] > 0 else 'up'] = True
-                    self.speed[1] = 0
-            if movement[0] != 0:
-                test_pos_x = [self.position[0] + movement[0], self.position[1]]
+                    collisions.down = movement.y > 0
+                    collisions.up = movement.y < 0
+                    self.get_component('speed').y = 0
+            if movement.x != 0:
+                test_pos_x = [obj_pos.x + movement.x, obj_pos.y]
                 if self.check_walkable_collision(test_pos_x, level_map):
-                    self.position[0] += movement[0]
+                    obj_pos.x += movement.x
                 else:
-                    self.collisions['right' if movement[0] > 0 else 'left'] = True
-                    self.speed[0] = 0
+                    collisions.right = movement.x > 0
+                    collisions.left = movement.x < 0
+                    self.get_component('speed').x = 0
         else:
-            self.position[1] += movement[1]
+            obj_pos.y += movement.y
             tiles = level_map.nearby_grid_physics(self.center)
-            self.handle_collisions((0, movement[1]), tiles)
-            self.position[0] += movement[0]
+            self.handle_collisions((0, movement.y), tiles)
+            obj_pos.x += movement.x
             tiles = level_map.nearby_grid_physics(self.center)
-            self.handle_collisions((movement[0], 0), tiles)
+            self.handle_collisions((movement.x, 0), tiles)

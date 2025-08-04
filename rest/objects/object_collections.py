@@ -36,7 +36,7 @@ class ObjectCollections:
         if collection:
             if collection in self.collections:
                 for game_object in self.collections[collection].copy():
-                    should_remove = game_object.tick(time_delta)
+                    should_remove = game_object.get_component('object').tick(time_delta)
                     if should_remove:
                         self.collections[collection].remove(game_object)
                         if collection in self.spatial_collections:
@@ -65,7 +65,7 @@ class ObjectCollections:
         if collection:
             if collection in self.collections:
                 for game_object in self.collections[collection]:
-                    game_object.renderz(camera_offset=camera_offset, group=layer_group)
+                    game_object.get_component('object').renderz(camera_offset=camera_offset, group=layer_group)
         else:
             for collection in self.collections:
                 self.renderz(collection=collection, layer_group=layer_group, camera_offset=camera_offset)

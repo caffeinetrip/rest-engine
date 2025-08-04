@@ -1,127 +1,152 @@
 import pygame
 from rest import G
+from rest.utils.cms import CMSEntity
+from components.engine.object_base_components import *
 
 ADJACENT_DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
-class Object:
-   def __init__(self, position, depth=0):
-       self.kind = getattr(self, 'kind', type)
-       self.position = list(position)
-       self.depth = depth
+class Object(CMSEntity):
+    def __init__(self, entity_id, position=(0, 0), depth=0):
+        super().__init__(entity_id)
+        self.entity_id = entity_id
+        asset_data = G.asset_library[entity_id]
+        if not asset_data:
+            raise ValueError(f"No asset data found for {entity_id}")
 
-       asset_data = G.asset_library[self.kind]
-       if asset_data is None:
-           raise ValueError(f"No asset data found for kind '{self.kind}'")
+        specs = asset_data.specs
+        size = specs.get('size', [16, 16])
+        self.components = {
+            'position': Position(x=position[0], y=position[1]),
+            'depth': Depth(val=depth),
+            'specs': Specs(data=specs),
+            'resources': Resources(data=asset_data.resources),
+            'sequences': Sequences(data=asset_data.sequences),
+            'state': State(value=specs.get('initial', 'idle/down')),
+            'dimensions': Dimensions(width=size[0], height=size[1]),
+            'transparency': Transparency(alpha=255),
+            'resize': Resize(scale_x=1.0, scale_y=1.0),
+            'angle': Angle(degrees=0.0),
+            'mirror': Mirror(flip_x=False, flip_y=False),
+            'show': Show(visible=True),
+            'modified': Modified(changed=False),
+            'highlight': Highlight(color=None)
+        }
 
-       self.specs = asset_data.specs
-       self.resources = asset_data.resources
-       self.sequences = asset_data.sequences
-       self.state = self.specs.get('initial', 'idle/down')
+        sequences = self.get_component('sequences').data
+        state = self.get_component('state').value
+        self.source_type = 'sequences'
+        self.sequence = sequences[state].copy() if state in sequences else sequences[list(sequences.keys())[0]].copy() if sequences else None
+        if not self.sequence:
+            raise ValueError(f"No sequences found for {entity_id}")
 
-       if self.state in self.sequences:
-           self.source_type = 'sequences'
-           self.sequence = self.sequences[self.state].copy()
-       else:
-           if self.sequences:
-               self.state = list(self.sequences.keys())[0]
-               self.source_type = 'sequences'
-               self.sequence = self.sequences[self.state].copy()
-           else:
-               raise ValueError(f"No sequences found for {self.kind}")
+        self.add_component('hitbox', Hitbox(rect=self.hitbox))
+        self.add_component('center', Center(x=self.center[0], y=self.center[1]))
+        self.add_component('offset_coords', OffsetCoords(x=self.offset_coords[0], y=self.offset_coords[1]))
+        self.add_component('source_image', SourceImage(image=self.source_image))
+        self.add_component('render_image', RenderImage(image=self.render_image))
 
-       self.dimensions = self.specs.get('size', [16, 16])
-       self.transparency = 255
-       self.resize = [1, 1]
-       self.angle = 0
-       self.mirror = [False, False]
-       self.show = True
-       self.modified = False
-       self.highlight = None
+    @property
+    def center(self):
+        return self.get_component('hitbox').rect.center
 
-   @property
-   def center(self):
-       return self.hitbox.center
+    @property
+    def hitbox(self):
+        pos = self.get_component('position')
+        dims = self.get_component('dimensions')
+        return pygame.Rect(pos.x, pos.y, dims.width, dims.height)
 
-   @property
-   def hitbox(self):
-       return pygame.Rect(*self.position, *self.dimensions)
+    @property
+    def offset_coords(self):
+        specs = self.get_component('specs').data
+        state = self.get_component('state').value
+        res_offset = specs[self.source_type][state]['offset']
+        obj_offset = specs['offset']
+        return res_offset[0] + obj_offset[0], res_offset[1] + obj_offset[1]
 
-   @property
-   def offset_coords(self):
-       res_offset = self.specs[self.source_type][self.state]['offset']
-       obj_offset = self.specs['offset']
-       return res_offset[0] + obj_offset[0], res_offset[1] + obj_offset[1]
+    @property
+    def source_image(self):
+        return self.sequence.img if self.source_type == 'sequences' else None
 
-   @property
-   def source_image(self):
-       if self.source_type == 'sequences':
-           return self.sequence.img
-       return None
+    @property
+    def render_image(self):
+        src_img = self.get_component('source_image').image
+        if not src_img:
+            dims = self.get_component('dimensions')
+            placeholder = pygame.Surface((dims.width, dims.height))
+            placeholder.fill((255, 0, 255))
+            return placeholder
 
-   @property
-   def render_image(self):
-       src_img = self.source_image
-       if src_img is None:
-           placeholder = pygame.Surface(self.dimensions)
-           placeholder.fill((255, 0, 255))
-           return placeholder
+        img = src_img
+        orig_size = img.get_size()
+        resize = self.get_component('resize')
+        if resize.scale_x != 1.0 or resize.scale_y != 1.0:
+            img = pygame.transform.scale(img, (int(resize.scale_x * orig_size[0]), int(resize.scale_y * orig_size[1])))
+            self.get_component('modified').changed = True
 
-       img = src_img
-       orig_size = img.get_size()
-       if self.resize != [1, 1]:
-           img = pygame.transform.scale(img, (int(self.resize[0] * orig_size[0]),
-                                              int(self.resize[1] * orig_size[1])))
-           self.modified = True
-       if any(self.mirror):
-           img = pygame.transform.flip(img, self.mirror[0], self.mirror[1])
-       if self.angle:
-           img = pygame.transform.rotate(img, self.angle)
-           self.modified = True
-       if self.transparency != 255:
-           if img == src_img:
-               img = img.copy()
-           img.set_alpha(self.transparency)
-       return img
+        mirror = self.get_component('mirror')
+        if mirror.flip_x or mirror.flip_y:
+            img = pygame.transform.flip(img, mirror.flip_x, mirror.flip_y)
 
-   def set_state(self, state, override=False):
-       if not override and (self.state == state):
-           return
-       self.state = state
-       self.source_type = 'sequences' if self.state in self.sequences else 'images'
-       if self.source_type == 'sequences':
-           self.sequence = self.sequences[self.state].copy()
+        angle = self.get_component('angle')
+        if angle.degrees:
+            img = pygame.transform.rotate(img, angle.degrees)
+            self.get_component('modified').changed = True
 
-   def draw_position(self, camera_offset=(0, 0)):
-       img_dims = self.render_image.get_size()
-       if (not self.modified) or self.specs['centered']:
-           center_shift = (img_dims[0] // 2, img_dims[1] // 2) if self.specs['centered'] else (0, 0)
-           return (self.position[0] - camera_offset[0] + self.offset_coords[0] - center_shift[0],
-                   self.position[1] - camera_offset[1] + self.offset_coords[1] - center_shift[1])
-       else:
-           raw_dims = self.source_image.get_size()
-           size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
-           auto_shift = [-size_delta[0] // 2, -size_delta[1] // 2]
-           return (self.position[0] - camera_offset[0] + self.offset_coords[0] + auto_shift[0],
-                   self.position[1] - camera_offset[1] + self.offset_coords[1] + auto_shift[1])
+        transparency = self.get_component('transparency')
+        if transparency.alpha != 255:
+            if img == src_img:
+                img = img.copy()
+            img.set_alpha(transparency.alpha)
 
-   def tick(self, delta):
-       if self.source_type == 'sequences':
-           self.sequence.update(delta)
+        return img
 
-   def draw(self, surface, camera_offset=(0, 0)):
-       if self.show:
-           surface.blit(self.render_image, self.draw_position(camera_offset))
+    def set_state(self, state, override=False):
+        if not override and self.get_component('state').value == state:
+            return
+        self.get_component('state').value = state
+        sequences = self.get_component('sequences').data
+        self.source_type = 'sequences' if state in sequences else 'images'
+        if self.source_type == 'sequences':
+            self.sequence = sequences[state].copy()
+            self.get_component('source_image').image = self.sequence.img
 
-   def renderz(self, camera_offset=(0, 0), group='game'):
-       if self.show:
-           pos = self.draw_position(camera_offset)
-           if self.highlight:
-               outline = pygame.mask.from_surface(self.render_image).to_surface(setcolor=self.highlight,
-                                                                                unsetcolor=(0, 0, 0, 0))
-               outline.set_alpha(self.transparency)
-               for shift in ADJACENT_DIRS:
-                   G.renderer.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
-                                 z=self.depth - 0.000001)
-           G.renderer.blit(self.render_image, pos, z=self.depth)
+    def draw_position(self, camera_offset=(0, 0)):
+        img_dims = self.render_image.get_size()
+        pos = self.get_component('position')
+        offset = self.get_component('offset_coords')
+        specs = self.get_component('specs').data
+        modified = self.get_component('modified').changed
 
+        if not modified or specs['centered']:
+            center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs['centered'] else (0, 0)
+            return (pos.x - camera_offset[0] + offset.x - center_shift[0],
+                    pos.y - camera_offset[1] + offset.y - center_shift[1])
+        
+        raw_dims = self.get_component('source_image').image.get_size()
+        size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
+        auto_shift = (-size_delta[0] // 2, -size_delta[1] // 2)
+        return (pos.x - camera_offset[0] + offset.x + auto_shift[0],
+                pos.y - camera_offset[1] + offset.y + auto_shift[1])
 
+    def tick(self, delta):
+        if self.source_type == 'sequences':
+            self.sequence.update(delta)
+            self.get_component('source_image').image = self.sequence.img
+
+    def draw(self, surface, camera_offset=(0, 0)):
+        if self.get_component('show').visible:
+            surface.blit(self.render_image, self.draw_position(camera_offset))
+
+    def renderz(self, camera_offset=(0, 0), group='game'):
+        if not self.get_component('show').visible:
+            return
+        pos = self.draw_position(camera_offset)
+        highlight = self.get_component('highlight')
+        if highlight.color:
+            outline = pygame.mask.from_surface(self.render_image).to_surface(
+                setcolor=highlight.color, unsetcolor=(0, 0, 0, 0))
+            outline.set_alpha(self.get_component('transparency').alpha)
+            for shift in ADJACENT_DIRS:
+                G.renderer.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
+                               z=self.get_component('depth').val - 0.000001)
+        G.renderer.blit(self.render_image, pos, z=self.get_component('depth').val)

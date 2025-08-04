@@ -3,43 +3,44 @@ from content_data.priority_layers import PriorityLayers
 from typing import Any
 
 class MoveInteractor(BaseInteraction, IOnEntityMove):
-    def priority(self) -> PriorityLayers:
+    def priority(self):
         return PriorityLayers.NORMAL
 
-    def on_move(self, context: dict, entity: Any = None) -> Any:
+    def on_move(self, context, entity=None):
         if not entity:
             return
 
         x = context.get('x', 0)
         y = context.get('y', 0)
 
-        if entity.move_x == 0 and entity.move_y == 0:
-            direction = context.get('direction', entity.direction)
-            mirror = context.get('mirror', entity.mirror[0])
+        if entity.get_component('move_x').value == 0 and entity.get_component('move_y').value == 0:
+            direction = context.get('direction', entity.get_component('direction').value)
+            mirror = context.get('mirror', entity.get_component('object').get_component('mirror').flip_x)
         else:
-            direction = entity.direction
-            mirror = entity.mirror[0]
+            direction = entity.get_component('direction').value
+            mirror = entity.get_component('object').get_component('mirror').flip_x
 
-        max_speed = context.get('max_speed', entity.max_speed)
+        max_speed = context.get('max_speed', [entity.get_component('max_speed').x, entity.get_component('max_speed').y])
 
-        entity.move_x += x
-        entity.move_y += y
-        entity.direction = direction
-        entity.mirror[0] = mirror
-        entity.max_speed = max_speed
+        entity.get_component('move_x').value += x
+        entity.get_component('move_y').value += y
+        entity.get_component('direction').value = direction
+        entity.get_component('object').get_component('mirror').flip_x = mirror
+        entity.get_component('max_speed').x = max_speed[0]
+        entity.get_component('max_speed').y = max_speed[1]
 
-        entity.move_x = max(min(entity.move_x, 1), -1)
-        entity.move_y = max(min(entity.move_y, 1), -1)
+        entity.get_component('move_x').value = max(min(entity.get_component('move_x').value, 1), -1)
+        entity.get_component('move_y').value = max(min(entity.get_component('move_y').value, 1), -1)
 
-        if entity.move_x != 0 and entity.move_y != 0:
-            entity.max_speed[0] = 35
+        if entity.get_component('move_x').value != 0 and entity.get_component('move_y').value != 0:
+            entity.get_component('max_speed').x = 35
         else:
-            entity.max_speed[1] = max_speed[1]
+            entity.get_component('max_speed').x = max_speed[0]
 
-        entity.speed[0] = entity.move_x * entity.max_speed[0]
-        entity.speed[1] = entity.move_y * entity.max_speed[1]
+        entity.get_component('speed').x = entity.get_component('move_x').value * entity.get_component('max_speed').x
+        entity.get_component('speed').y = entity.get_component('move_y').value * entity.get_component('max_speed').y
 
-        entity.moving = entity.move_x != 0 or entity.move_y != 0
+        entity.get_component('moving').value = entity.get_component('move_x').value != 0 or entity.get_component('move_y').value != 0
 
-        state = f'walk/{entity.direction}' if entity.moving else f'idle/{entity.direction}'
-        entity.set_state(state)
+        state = f'walk/{entity.get_component("direction").value}' if entity.get_component('moving').value else f'idle/{entity.get_component("direction").value}'
+        entity.get_component('object').set_state(state)

@@ -1,4 +1,6 @@
-
+import pygame
+from rest import G
+from rest.utils.cms import CMSEntity
 
 class Sectors:
     def __init__(self, sector_size):
@@ -47,7 +49,6 @@ class Sectors:
         self.next_id += 1
 
     def delete(self, obj):
-        # assumes object is tagged
         for sector_id in obj.sector_ids:
             if sector_id in self.objects:
                 del self.objects[sector_id]
@@ -61,21 +62,15 @@ class Sectors:
             del self.id_to_loc[sector_id]
 
     def query(self, rect):
-        # get bounding coords
         tl = (rect.x // self.sector_size, rect.y // self.sector_size)
         br = ((rect.x + rect.width) // self.sector_size, (rect.y + rect.height) // self.sector_size)
-
-        # lookup entries
         results = []
         for x in range(br[0] - tl[0] + 1):
             for y in range(br[1] - tl[1] + 1):
                 loc = (tl[0] + x, tl[1] + y)
                 if loc in self.map:
                     results += self.map[loc]
-
-        # remove duplicates
         results = set(results)
-
         return [self.objects[obj_id] for obj_id in results]
 
 class ObjectSectors:
@@ -92,8 +87,9 @@ class ObjectSectors:
         return sum([len(self.sectors[sector]) for sector in self.sectors])
 
     def register(self, entity, collection_name='main'):
+        print(entity)
         if id(entity) not in self.entity_locations:
-            sector_coords = (int(entity.position[0] // self.sector_size), int(entity.position[1] // self.sector_size))
+            sector_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size), int(entity.get_component('object').get_component('position').y // self.sector_size))
             if sector_coords not in self.sectors:
                 self.sectors[sector_coords] = []
             self.sectors[sector_coords].append(entity)
@@ -110,56 +106,40 @@ class ObjectSectors:
     def remove_collection(self, collection_name):
         if collection_name not in self.visible_objects:
             return
-
         entities_to_remove = []
         for entity_id, sector_coords in self.entity_locations.items():
             for entity in self.sectors[sector_coords]:
                 if hasattr(entity, '_collection') and entity._collection == collection_name:
                     entities_to_remove.append(entity)
-
         for entity in entities_to_remove:
             self.unregister(entity)
-
         self.visible_objects[collection_name] = []
 
     def purge(self):
         self.sectors = {}
         self.entity_locations = {}
-
         for collection_name in self.visible_objects:
             self.visible_objects[collection_name] = []
 
     def refresh_visible(self, view_rect):
         for collection_name in self.visible_objects:
             self.visible_objects[collection_name] = []
-
-        # Calculate sector coordinates from view rectangle
         start_y = int(view_rect.top // self.sector_size)
         end_y = int(view_rect.bottom // self.sector_size + 1)
         start_x = int(view_rect.left // self.sector_size)
         end_x = int(view_rect.right // self.sector_size + 1)
-
-        # Process all sectors within view
         for y in range(start_y, end_y):
             for x in range(start_x, end_x):
                 sector_coords = (x, y)
                 if sector_coords in self.sectors:
                     for entity in self.sectors[sector_coords]:
-                        # Check if entity moved to a new sector
-                        new_coords = (int(entity.position[0] // self.sector_size),
-                                      int(entity.position[1] // self.sector_size))
+                        new_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size),
+                                      int(entity.get_component('object').get_component('position').y // self.sector_size))
                         if self.entity_locations[id(entity)] != new_coords:
-                            # Update entity sector location
                             old_coords = self.entity_locations[id(entity)]
                             self.entity_locations[id(entity)] = new_coords
-
-                            # Remove from old sector
                             self.sectors[old_coords].remove(entity)
-
-                            # Add to new sector
                             if new_coords not in self.sectors:
                                 self.sectors[new_coords] = []
                             self.sectors[new_coords].append(entity)
-
-                        # Add to visible objects for this collection
                         self.visible_objects[entity._collection].append(entity)

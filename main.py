@@ -4,7 +4,7 @@ from rest import *
 from rest.utils.hooks import gen_hook
 
 from content_data.entities_data import entities
-from player import PlayerEntity
+from entities.player import PlayerEntity
 
 from behavior import *
 
@@ -42,7 +42,7 @@ class MyGame(Game):
             'ui': self.ui_surface})
         
         self.player = PlayerEntity((100, 150))
-        G.object_collections.register(self.player, 'entities')
+        G.object_collections.register(self.player.get_component('object'), 'entities')
         
         self.entities_data = entities
         
@@ -56,7 +56,7 @@ class MyGame(Game):
         self.ui_surface.fill((0, 0, 0, 0))
         self.background_surface.fill((0, 0, 0, 0))
         
-        self.camera.set_target(self.player)
+        self.camera.set_target(self.player.get_component('object'))
         self.camera.update()
         
         visible_rect = pygame.Rect(
@@ -68,7 +68,7 @@ class MyGame(Game):
         
         G.object_collections.update(view_area=visible_rect)
         
-        self.player.physics_update(self.tilemap)
+        self.player.get_component('object').physics_update(self.tilemap)
         
         self.tilemap.renderz(visible_rect, offset=self.camera)
         G.object_collections.renderz(layer_group='game', camera_offset=self.camera)
