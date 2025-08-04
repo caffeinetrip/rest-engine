@@ -2,8 +2,18 @@ import pygame
 from rest import G
 from rest.utils.cms import CMSEntity
 from typing import Tuple
-from components.cms_components import CameraComponent
 from rest.utils.gfx import smooth_approach
+from rest.utils.cms import CMSComponentDefinition
+from typing import List, Tuple, Any
+
+class CameraComponent(CMSComponentDefinition):
+    size: Tuple[int, int]
+    pos: List[float]
+    slowness: float
+    tilemap: Any = None
+    int_pos: Tuple[int, int] = (0, 0)
+    rect: pygame.Rect | None = None
+    target_pos: Tuple[float, float] | None = None
 
 class Camera(CMSEntity):
     def __init__(self, entity_id, size: Tuple[int, int], pos=(0, 0), slowness=1, tilemap=None):

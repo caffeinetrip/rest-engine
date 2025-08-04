@@ -58,6 +58,8 @@ class Input:
         self._action_locks = {}
         self._window_component = None
         
+        self.holded_keys_count = 0
+        
         self.keys_events = {
             'holding': [],
             'pressed': [],
@@ -182,12 +184,15 @@ class Input:
             'released': self.released,
         }
 
+        self.holded_keys_count = 0
         for mode, events in self.keys_events.items():
             check = key_checkers[mode]
             for event in events:
                 for key in event['keys']:
                     if check(key):
                         game.add_event(event['event']['event_type'], event['event']['context'], event['event']['entity'])
+                        self.holded_keys_count += 1
+            
 
     def add_key_event(self, mode, keys, event_type, context, entity = None):
         

@@ -45,6 +45,7 @@ class MovingObject(CMSEntity):
             'move_x': MoveX(value=0.0),
             'move_y': MoveY(value=0.0),
             'moving_processor': MovingProcessor(value=True),
+            'last_vertical_state': LastVerticalState(state=None)
         }
 
     @property

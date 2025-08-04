@@ -45,7 +45,6 @@ class MyGame(Game):
         G.object_collections.register(self.player.get_component('object'), 'entities')
         
         self.entities_data = entities
-        
 
     def load(self):
         self.event_system = G.event_system

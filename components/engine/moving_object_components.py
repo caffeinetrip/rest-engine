@@ -78,3 +78,6 @@ class MoveY(CMSComponentDefinition):
 
 class MovingProcessor(CMSComponentDefinition):
     value: bool
+
+class LastVerticalState(CMSComponentDefinition):
+    state: str | None
