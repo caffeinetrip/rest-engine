@@ -7,7 +7,7 @@ class Position(CMSComponentDefinition):
     x: int
     y: int
 
-class Depth(CMSComponentDefinition):
+class Z(CMSComponentDefinition):
     val: int
 
 class Specs(CMSComponentDefinition):
@@ -46,7 +46,7 @@ class Show(CMSComponentDefinition):
 class Modified(CMSComponentDefinition):
     changed: bool
 
-class Highlight(CMSComponentDefinition):
+class Outline(CMSComponentDefinition):
     color: Optional[Tuple[int, int, int]]
 
 class Center(CMSComponentDefinition):

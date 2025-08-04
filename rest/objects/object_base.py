@@ -6,7 +6,7 @@ from components.engine.object_base_components import *
 ADJACENT_DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
 class Object(CMSEntity):
-    def __init__(self, entity_id, position=(0, 0), depth=0):
+    def __init__(self, entity_id, position=(0, 0), z=0):
         super().__init__(entity_id)
         self.entity_id = entity_id
         asset_data = G.asset_library[entity_id]
@@ -17,7 +17,7 @@ class Object(CMSEntity):
         size = specs.get('size', [16, 16])
         self.components = {
             'position': Position(x=position[0], y=position[1]),
-            'depth': Depth(val=depth),
+            'z': Z(val=z),
             'specs': Specs(data=specs),
             'resources': Resources(data=asset_data.resources),
             'sequences': Sequences(data=asset_data.sequences),
@@ -29,7 +29,7 @@ class Object(CMSEntity):
             'mirror': Mirror(flip_x=False, flip_y=False),
             'show': Show(visible=True),
             'modified': Modified(changed=False),
-            'highlight': Highlight(color=None)
+            'outline': Outline(color=None)
         }
 
         sequences = self.get_component('sequences').data
@@ -96,6 +96,7 @@ class Object(CMSEntity):
         if transparency.alpha != 255:
             if img == src_img:
                 img = img.copy()
+                
             img.set_alpha(transparency.alpha)
 
         return img
@@ -103,9 +104,11 @@ class Object(CMSEntity):
     def set_state(self, state, override=False):
         if not override and self.get_component('state').value == state:
             return
+        
         self.get_component('state').value = state
         sequences = self.get_component('sequences').data
         self.source_type = 'sequences' if state in sequences else 'images'
+        
         if self.source_type == 'sequences':
             self.sequence = sequences[state].copy()
             self.get_component('source_image').image = self.sequence.img
@@ -118,13 +121,16 @@ class Object(CMSEntity):
         modified = self.get_component('modified').changed
 
         if not modified or specs['centered']:
+            
             center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs['centered'] else (0, 0)
+            
             return (pos.x - camera_offset[0] + offset.x - center_shift[0],
                     pos.y - camera_offset[1] + offset.y - center_shift[1])
         
         raw_dims = self.get_component('source_image').image.get_size()
         size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
         auto_shift = (-size_delta[0] // 2, -size_delta[1] // 2)
+        
         return (pos.x - camera_offset[0] + offset.x + auto_shift[0],
                 pos.y - camera_offset[1] + offset.y + auto_shift[1])
 
@@ -140,13 +146,19 @@ class Object(CMSEntity):
     def renderz(self, camera_offset=(0, 0), group='game'):
         if not self.get_component('show').visible:
             return
+        
         pos = self.draw_position(camera_offset)
-        highlight = self.get_component('highlight')
-        if highlight.color:
+        outline = self.get_component('outline')
+        
+        if outline.color:
+            
             outline = pygame.mask.from_surface(self.render_image).to_surface(
-                setcolor=highlight.color, unsetcolor=(0, 0, 0, 0))
+                setcolor=outline.color, unsetcolor=(0, 0, 0, 0))
+            
             outline.set_alpha(self.get_component('transparency').alpha)
+            
             for shift in ADJACENT_DIRS:
-                G.renderer.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
-                               z=self.get_component('depth').val - 0.000001)
-        G.renderer.blit(self.render_image, pos, z=self.get_component('depth').val)
+                G.window.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
+                               z=self.get_component('z').val - 0.000001)
+                
+        G.window.blit(self.render_image, pos, z=self.get_component('z').val)

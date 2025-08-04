@@ -36,7 +36,7 @@ class MyGame(Game):
         self.display_surface = pygame.Surface(DISPLAY_SIZE, pygame.SRCALPHA)
         self.ui_surface = pygame.Surface(DISPLAY_SIZE, pygame.SRCALPHA)
         
-        G.renderer.add_surfaces(
+        G.window.add_surfaces(
             {'background': self.background_surface, 
             'default': self.display_surface, 
             'ui': self.ui_surface})

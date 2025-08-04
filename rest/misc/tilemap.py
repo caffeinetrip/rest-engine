@@ -21,7 +21,7 @@ NON_WALKABLE_TILES = [
 
 
 def basic_tile_render(tile, offset=(0, 0), group='default'):
-    G.renderer.blit(tile.img, (tile.raw_pos[0] + tile.offset[0] - offset[0],
+    G.window.blit(tile.img, (tile.raw_pos[0] + tile.offset[0] - offset[0],
                              tile.raw_pos[1] + tile.offset[1] - offset[1]), z=tile.layer, group=group)
 
 

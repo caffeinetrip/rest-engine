@@ -5,7 +5,6 @@ from .mgl.render_object import RenderObject
 from .event_system.event_system import EventSystem
 from .G import G
 from .misc.input import Input
-from .renderer.renderer import Renderer
 from .objects.asset_library import AssetLibrary
 from .assets.assets import Assets
 from .objects.object_collections import ObjectCollections
@@ -36,7 +35,6 @@ def init(dimensions=(640, 480), caption='window', sound_data_path=None, spritesh
     G.asset_library.assets
     G.object_collections = ObjectCollections(spatial_collections=['entities'])
 
-    G.renderer = Renderer()
     G.input = Input()
     
     
