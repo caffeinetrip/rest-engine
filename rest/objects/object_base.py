@@ -29,7 +29,8 @@ class Object(CMSEntity):
             'mirror': Mirror(flip_x=False, flip_y=False),
             'show': Show(visible=True),
             'modified': Modified(changed=False),
-            'outline': Outline(color=None)
+            'outline': Outline(color=None),
+            'shadow': Shadow()
         }
 
         sequences = self.get_component('sequences').data
@@ -96,7 +97,6 @@ class Object(CMSEntity):
         if transparency.alpha != 255:
             if img == src_img:
                 img = img.copy()
-                
             img.set_alpha(transparency.alpha)
 
         return img
@@ -104,11 +104,9 @@ class Object(CMSEntity):
     def set_state(self, state, override=False):
         if not override and self.get_component('state').value == state:
             return
-        
         self.get_component('state').value = state
         sequences = self.get_component('sequences').data
         self.source_type = 'sequences' if state in sequences else 'images'
-        
         if self.source_type == 'sequences':
             self.sequence = sequences[state].copy()
             self.get_component('source_image').image = self.sequence.img
@@ -121,16 +119,13 @@ class Object(CMSEntity):
         modified = self.get_component('modified').changed
 
         if not modified or specs['centered']:
-            
             center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs['centered'] else (0, 0)
-            
             return (pos.x - camera_offset[0] + offset.x - center_shift[0],
                     pos.y - camera_offset[1] + offset.y - center_shift[1])
-        
+
         raw_dims = self.get_component('source_image').image.get_size()
         size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
         auto_shift = (-size_delta[0] // 2, -size_delta[1] // 2)
-        
         return (pos.x - camera_offset[0] + offset.x + auto_shift[0],
                 pos.y - camera_offset[1] + offset.y + auto_shift[1])
 
@@ -148,17 +143,32 @@ class Object(CMSEntity):
             return
         
         pos = self.draw_position(camera_offset)
+        shadow = self.get_component('shadow')
+
+        if shadow.enabled:
+            shadow_surface = pygame.Surface((shadow.radius * 2, shadow.radius * 2), pygame.SRCALPHA)
+            pygame.draw.ellipse(
+                shadow_surface,
+                shadow.color + (shadow.alpha,),
+                (0, 0, shadow.radius * 2, shadow.radius)
+            )
+            shadow_pos = (
+                pos[0] + shadow.offset_x,
+                pos[1] + shadow.offset_y
+            )
+            G.window.blit(
+                shadow_surface,
+                shadow_pos,
+                z=self.get_component('z').val - 0.0001,
+            )
+
         outline = self.get_component('outline')
-        
         if outline.color:
-            
             outline = pygame.mask.from_surface(self.render_image).to_surface(
                 setcolor=outline.color, unsetcolor=(0, 0, 0, 0))
-            
             outline.set_alpha(self.get_component('transparency').alpha)
-            
             for shift in ADJACENT_DIRS:
                 G.window.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
-                               z=self.get_component('z').val - 0.000001)
+                              z=self.get_component('z').val - 0.000001)
                 
         G.window.blit(self.render_image, pos, z=self.get_component('z').val)

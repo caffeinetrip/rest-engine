@@ -1,7 +1,14 @@
 from rest.utils.cms import CMSComponentDefinition
-from typing import  Dict, Any, Optional, Tuple
-
+from typing import Optional, Tuple
 import pygame
+
+class Shadow(CMSComponentDefinition):
+    enabled: bool = True
+    radius: int = 6
+    offset_x: float = 1.5
+    offset_y: int = 12
+    alpha: int = 50
+    color: tuple = (0, 0, 0)
 
 class Position(CMSComponentDefinition):
     x: int
@@ -11,13 +18,13 @@ class Z(CMSComponentDefinition):
     val: int
 
 class Specs(CMSComponentDefinition):
-    data: Dict[str, Any]
+    data: dict
 
 class Resources(CMSComponentDefinition):
-    data: Dict[str, Any]
+    data: dict
 
 class Sequences(CMSComponentDefinition):
-    data: Dict[str, Any]
+    data: dict
 
 class State(CMSComponentDefinition):
     value: str
@@ -52,7 +59,7 @@ class Outline(CMSComponentDefinition):
 class Center(CMSComponentDefinition):
     x: int
     y: int
-    
+
 class Hitbox(CMSComponentDefinition):
     rect: pygame.Rect
 

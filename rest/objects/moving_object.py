@@ -122,6 +122,9 @@ class MovingObject(CMSEntity):
     def physics_update(self, level_map):
         delta = G.window.dt
         self.behavior_update()
+        
+        if self.get_component('move_x').value != 0 and self.get_component('move_y').value != 0:
+            self.get_component('max_speed').x, self.get_component('max_speed').y = (33, 33)
 
         delta_move = self.get_component('delta_move')
         auto_mirror = self.get_component('auto_mirror').value

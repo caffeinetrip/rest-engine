@@ -26,16 +26,12 @@ class MoveInteractor(BaseInteraction, IOnEntityMove):
         entity.get_component('move_y').value += y
         entity.get_component('direction').value = direction
         entity.get_component('object').get_component('mirror').flip_x = mirror
+
         entity.get_component('max_speed').x = max_speed[0]
         entity.get_component('max_speed').y = max_speed[1]
 
         entity.get_component('move_x').value = max(min(entity.get_component('move_x').value, 1), -1)
         entity.get_component('move_y').value = max(min(entity.get_component('move_y').value, 1), -1)
-
-        if entity.get_component('move_x').value != 0 and entity.get_component('move_y').value != 0:
-            entity.get_component('max_speed').x = 35
-        else:
-            entity.get_component('max_speed').x = max_speed[0]
 
         entity.get_component('speed').x = entity.get_component('move_x').value * entity.get_component('max_speed').x
         entity.get_component('speed').y = entity.get_component('move_y').value * entity.get_component('max_speed').y
