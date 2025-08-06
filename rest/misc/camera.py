@@ -22,6 +22,15 @@ class Camera:
             return (self.target_pos[0] - self.size[0] // 2, self.target_pos[0] - self.size[1] // 2)
         
     @property
+    def visible_rect(self):
+        return pygame.Rect(
+            self.int_pos[0] - 16,
+            self.int_pos[1] - 16,
+            G.window.surfaces['default'].get_width() + 48,
+            G.window.surfaces['default'].get_height() + 48
+        )
+        
+    @property
     def center(self):
         return (self.pos[0] + self.size[0] / 2, self.pos[1] + self.size[1] / 2)
     

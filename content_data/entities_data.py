@@ -6,14 +6,12 @@ from typing import List, Optional, Dict
 
 class EntityData:
     def __init__(self):
-        self.entities_dict: Dict[str, CMSEntity] = {}
+        self.entities_dict: Dict[str, CMSEntity] = {} # type: ignore
         self._initialized = False
 
     def initialize(self):
         if not self._initialized:
             entities = [
-                TestGuy('e_testguy1'),
-                TestGuy('e_testguy2'),
                 Camera('e_camera', size=(800, 600), pos=(0, 0), slowness=5)
             ]
             self.entities_dict = {entity.entity_id: entity for entity in entities if hasattr(entity, 'entity_id')}
