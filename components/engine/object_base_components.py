@@ -7,7 +7,7 @@ class Shadow(CMSComponentDefinition):
     radius: int = 6
     offset_x: float = 1.5
     offset_y: int = 12
-    alpha: int = 50
+    alpha: int = 35
     color: tuple = (0, 0, 0)
 
 class Position(CMSComponentDefinition):
