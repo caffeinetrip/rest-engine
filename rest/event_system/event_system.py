@@ -25,7 +25,6 @@ class EventSystem:
         interface_map = {
             IOnEncounterStart: 'encounter_start',
             IOnEncounerReady: 'encounter_ready',
-            IOnPressSpaceButton: 'space',
             IOnLoadFolder: 'load_folder',
             IOnEntityMove: 'move'
         }

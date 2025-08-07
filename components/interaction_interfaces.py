@@ -16,11 +16,6 @@ class IOnEncounerReady(ABC):
     @abstractmethod
     def on_encounter_ready(self, context: dict, entity: Any = None) -> Any:
         pass
-    
-class IOnPressSpaceButton(ABC):
-    @abstractmethod
-    def on_space(self, context: dict, entity: Any = None) -> Any:
-        pass
 
 class IOnLoadFolder(ABC):
     @abstractmethod

@@ -5,6 +5,21 @@ from typing import List, Tuple, Union
 
 from rest.utils.cms import CMSEntity
 
+# List[state | mirror]
+state_dict = {
+    0: ['right', False],
+    90: ['top', False],
+    180: ['right', True],
+    270: ['down', True]
+}
+
+degrees_dict = {
+    ('top', False): 90,
+    ('down', False): 270,
+    ('right', True): 180,
+    ('right', False): 0
+}
+
 def normalize(v: int, amt: int, target: int = 0) -> int:
     if v > target + amt:
         v -= amt
@@ -77,3 +92,56 @@ def convert_string_to_list(string: str) -> List[Union[int, float]]:
             raise ValueError(f'Unable to convert "{part}" to a number')
     
     return numbers
+
+def get_rotate(current_degrees: int, target_degrees: int, rotate_speed: int) -> int:
+    
+    if current_degrees == 0 and target_degrees == 270:
+        return 359
+        
+    elif current_degrees >= 270 and target_degrees == 0:
+        target_degrees = 360
+    
+    if target_degrees - rotate_speed * 2 < current_degrees < target_degrees + rotate_speed * 2:
+        return target_degrees - current_degrees
+    
+    
+    if target_degrees - current_degrees > 0: 
+        return rotate_speed
+    
+    else:
+        return rotate_speed * -1
+
+def get_state(current_degrees: int) -> List[str | bool] | None:
+    
+    if current_degrees in state_dict.keys():
+        return state_dict[current_degrees] # type: ignore
+    
+    elif current_degrees > 0 and current_degrees <= 90:
+        return ['rotate/right_top', False]
+    
+    elif current_degrees > 90 and current_degrees <= 180:
+        return ['rotate/right_top', True]
+    
+    elif current_degrees > 180 and current_degrees <= 270:
+        return ['rotate/right_down', True]
+    
+    elif current_degrees > 270 and current_degrees <= 360:
+        return ['rotate/right_down', False]
+    
+    return None
+
+def get_state_in_diapasone(current_degrees: int) -> str:
+    
+    if current_degrees == 0 and current_degrees <= 90:
+        return 'idle/top'
+    
+    elif current_degrees == 90 and current_degrees <= 180:
+        return 'idle/right'
+    
+    elif current_degrees == 180 and current_degrees <= 270:
+        return 'idle/down'
+    
+    elif current_degrees == 270 and current_degrees <= 360:
+        return 'idle/right'
+    
+    return 'idle/right'

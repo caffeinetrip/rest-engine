@@ -66,7 +66,10 @@ class CollisionOffsets(CMSComponentDefinition):
 
 class Direction(CMSComponentDefinition):
     value: str
-
+    
+class TargetDirection(CMSComponentDefinition):
+    value: str
+    
 class Moving(CMSComponentDefinition):
     value: bool
 
@@ -81,3 +84,15 @@ class MovingProcessor(CMSComponentDefinition):
 
 class LastVerticalState(CMSComponentDefinition):
     state: str | None
+    
+class Degrees(CMSComponentDefinition):
+    value: int
+    
+class RotationSpeed(CMSComponentDefinition):
+    value: int
+    
+class TargetDegrees(CMSComponentDefinition):
+    value: int
+    
+class TargetMirror(CMSComponentDefinition):
+    value: bool

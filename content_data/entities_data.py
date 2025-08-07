@@ -1,4 +1,3 @@
-from entities.test_guy import TestGuy
 
 from rest.components.camera import Camera
 from rest.utils.cms import CMSEntity

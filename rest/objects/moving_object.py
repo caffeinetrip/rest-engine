@@ -2,6 +2,7 @@ from .object_base import Object
 from rest import G
 from rest.utils.cms import CMSEntity
 from components.engine.moving_object_components import *
+from rest.utils.game_math import get_state_in_diapasone
 import pygame
 
 WALKABLE_TILES = ['walk_zone']
@@ -34,6 +35,7 @@ class MovingObject(CMSEntity):
             'prev_move': PrevMove(x=0.0, y=0.0),
             'rebound': Rebound(value=0.0),
             'auto_mirror': AutoMirror(value=0.0),
+            'target_mirror': TargetMirror(value=False),
             'collision_list': CollisionList(value=[]),
             'collisions': Collisions(up=False, down=False, right=False, left=False),
             'pass_through': PassThrough(value=0.0),
@@ -41,11 +43,15 @@ class MovingObject(CMSEntity):
             'walkable_only': WalkableOnly(value=True),
             'collision_offsets': CollisionOffsets(left=5, top=0, right=-8, bottom=-5),
             'direction': Direction(value='down'),
+            'target_direction': TargetDirection(value='down'),
             'moving': Moving(value=False),
             'move_x': MoveX(value=0.0),
             'move_y': MoveY(value=0.0),
             'moving_processor': MovingProcessor(value=True),
-            'last_vertical_state': LastVerticalState(state=None)
+            'last_vertical_state': LastVerticalState(state=None),
+            'degrees': Degrees(value=0),
+            'rotate_speed': RotationSpeed(value=18),
+            'target_degrees': TargetDegrees(value=0)
         }
 
     @property
@@ -123,6 +129,9 @@ class MovingObject(CMSEntity):
         delta = G.window.dt
         self.behavior_update()
         
+        if self.get_component('degrees').value >= 360:
+            self.get_component('degrees').value = 0
+        
         if self.get_component('move_x').value != 0 and self.get_component('move_y').value != 0:
             self.get_component('max_speed').x, self.get_component('max_speed').y = (33, 33)
 
@@ -138,6 +147,12 @@ class MovingObject(CMSEntity):
         delta_move.x += self.get_component('speed').x * delta
         delta_move.y += self.get_component('speed').y * delta
         self.move_with_physics(delta_move, level_map)
+        
+        if 'rotate' in self.get_component('object').get_component('state').value:
+            if G.input.holded_keys_count == 0:
+                x = get_state_in_diapasone(self.get_component('degrees').value)
+                self.get_component('object').set_state(x)
+                self.get_component('direction').value = x.removeprefix('idle/')
 
         self.get_component('prev_move').x = delta_move.x / delta
         self.get_component('prev_move').y = delta_move.y / delta

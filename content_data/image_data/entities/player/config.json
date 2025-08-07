@@ -118,6 +118,39 @@
                 0.05,
                 0.05
             ]
+        },
+        "rotate/right_top": {
+            "offset": [
+                0,
+                0
+            ],
+            "rate": 1.0,
+            "repeat": true,
+            "frozen": false,
+            "durations": [
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05
+            ]
+        },
+        "rotate/right_down": {
+            "offset": [
+                0,
+                0
+            ],
+            "rate": 1.0,
+            "repeat": true,
+            "frozen": false,
+            "durations": [
+                0.05,
+                0.05,
+                0.05,
+                0.05
+            ]
         }
     },
     "initial": "idle/down",

@@ -21,3 +21,5 @@ class Settings:
     spritesheets_path: str | None
     entities_path: str | None
     frag_path: str | None
+    
+    fps_bar: bool

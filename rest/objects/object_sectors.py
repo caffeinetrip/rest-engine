@@ -87,7 +87,6 @@ class ObjectSectors:
         return sum([len(self.sectors[sector]) for sector in self.sectors])
 
     def register(self, entity, collection_name='main'):
-        print(entity)
         if id(entity) not in self.entity_locations:
             sector_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size), int(entity.get_component('object').get_component('position').y // self.sector_size))
             if sector_coords not in self.sectors:
