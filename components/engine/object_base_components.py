@@ -4,8 +4,8 @@ import pygame
 
 class Shadow(CMSComponentDefinition):
     enabled: bool = True
-    radius: int = 6
-    offset_x: float = 1.5
+    radius: float = 6.5
+    offset_x: float = 1.9
     offset_y: int = 12
     alpha: int = 35
     color: tuple = (0, 0, 0)

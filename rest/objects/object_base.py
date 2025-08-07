@@ -120,14 +120,14 @@ class Object(CMSEntity):
 
         if not modified or specs['centered']:
             center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs['centered'] else (0, 0)
-            return (pos.x - camera_offset[0] + offset.x - center_shift[0],
-                    pos.y - camera_offset[1] + offset.y - center_shift[1])
+            return (int(pos.x - camera_offset[0] + offset.x - center_shift[0]),
+                    int(pos.y - camera_offset[1] + offset.y - center_shift[1]))
 
         raw_dims = self.get_component('source_image').image.get_size()
         size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
         auto_shift = (-size_delta[0] // 2, -size_delta[1] // 2)
-        return (pos.x - camera_offset[0] + offset.x + auto_shift[0],
-                pos.y - camera_offset[1] + offset.y + auto_shift[1])
+        return (int(pos.x - camera_offset[0] + offset.x + auto_shift[0]),
+                int(pos.y - camera_offset[1] + offset.y + auto_shift[1]))
 
     def tick(self, delta):
         if self.source_type == 'sequences':
@@ -152,9 +152,12 @@ class Object(CMSEntity):
                 shadow.color + (shadow.alpha,),
                 (0, 0, shadow.radius * 2, shadow.radius)
             )
+            resize = self.get_component('resize')
+            adjusted_offset_x = shadow.offset_x * resize.scale_x
+            adjusted_offset_y = shadow.offset_y * resize.scale_y
             shadow_pos = (
-                pos[0] + shadow.offset_x,
-                pos[1] + shadow.offset_y
+                int(pos[0] + adjusted_offset_x),
+                int(pos[1] + adjusted_offset_y)
             )
             G.window.blit(
                 shadow_surface,

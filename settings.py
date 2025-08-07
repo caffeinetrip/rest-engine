@@ -3,8 +3,8 @@ from rest.misc.settings import Settings
 settings = Settings(
     
     # window settings
-    window_size = (800, 600),
-    display_size = (340, 220),
+    window_size = (1280, 960),
+    display_size = (320, 240),
     screens = ['background', 'default', 'ui'],
     fps_cap = 60,
     tile_size = 16,

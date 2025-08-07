@@ -50,7 +50,7 @@ class MovingObject(CMSEntity):
             'moving_processor': MovingProcessor(value=True),
             'last_vertical_state': LastVerticalState(state=None),
             'degrees': Degrees(value=0),
-            'rotate_speed': RotationSpeed(value=18),
+            'rotate_speed': RotationSpeed(value=30),
             'target_degrees': TargetDegrees(value=0)
         }
 
@@ -93,7 +93,6 @@ class MovingObject(CMSEntity):
         ]
 
         for x, y in corners:
-            
             grid_x, grid_y = int(x // level_map.tile_size[0]), int(y // level_map.tile_size[1])
             if (grid_x, grid_y) not in level_map.grid_tiles:
                 return False
@@ -112,12 +111,10 @@ class MovingObject(CMSEntity):
         ]
 
         for config in key_configs:
-            
             event_data = {
                 'x': config['x'], 'y': config['y'], 'direction': config['direction'],
                 'mirror': config['mirror'], 'max_speed': [70, 70]
             }
-            
             G.input.add_key_event('holding', config['keys'], 'move', event_data, self)
             G.input.add_key_event('released', config['keys'], 'move', {**event_data, 'x': 0, 'y': 0}, self)
 
@@ -127,6 +124,7 @@ class MovingObject(CMSEntity):
 
     def physics_update(self, level_map):
         delta = G.window.dt
+        state = self.get_component('object').get_component('state').value
         self.behavior_update()
         
         if self.get_component('degrees').value >= 360:
@@ -153,6 +151,10 @@ class MovingObject(CMSEntity):
                 x = get_state_in_diapasone(self.get_component('degrees').value)
                 self.get_component('object').set_state(x)
                 self.get_component('direction').value = x.removeprefix('idle/')
+        
+        if state == 'idle/down' or state == 'idle/top':
+            self.get_component('object').get_component('mirror').flip_x = False
+            
 
         self.get_component('prev_move').x = delta_move.x / delta
         self.get_component('prev_move').y = delta_move.y / delta
@@ -185,31 +187,25 @@ class MovingObject(CMSEntity):
         if self.get_component('walkable_only').value:
             if movement.y != 0:
                 test_pos_y = [obj_pos.x, obj_pos.y + movement.y]
-                
                 if self.check_walkable_collision(test_pos_y, level_map):
                     obj_pos.y += movement.y
-                    
                 else:
                     collisions.down = movement.y > 0
                     collisions.up = movement.y < 0
                     self.get_component('speed').y = 0
                     
             if movement.x != 0:
-                
                 test_pos_x = [obj_pos.x + movement.x, obj_pos.y]
                 if self.check_walkable_collision(test_pos_x, level_map):
                     obj_pos.x += movement.x
-                    
                 else:
                     collisions.right = movement.x > 0
                     collisions.left = movement.x < 0
                     self.get_component('speed').x = 0
         else:
-            
             obj_pos.y += movement.y
             tiles = level_map.nearby_grid_physics(self.center)
             self.handle_collisions((0, movement.y), tiles)
-            
             obj_pos.x += movement.x
             tiles = level_map.nearby_grid_physics(self.center)
             self.handle_collisions((movement.x, 0), tiles)

@@ -96,3 +96,4 @@ class TargetDegrees(CMSComponentDefinition):
     
 class TargetMirror(CMSComponentDefinition):
     value: bool
+    

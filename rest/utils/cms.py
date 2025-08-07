@@ -3,7 +3,6 @@ from dataclasses import dataclass, is_dataclass
 
 class SlottedDataclassMeta(type):
     def __new__(mcs, name, bases, namespace, **kwargs):
-        # Проверяем, является ли класс уже датаклассом или имеет __slots__
         if not namespace.get('_is_base_class', False) and not is_dataclass(namespace) and '__slots__' not in namespace:
             cls = dataclass(slots=True)(type.__new__(mcs, name, bases, namespace))
             return cls
