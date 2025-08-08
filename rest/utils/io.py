@@ -83,7 +83,6 @@ def recursive_file_op(path, func, filetype=None):
         path_ref = wpath.copy()
         data_ref = data
 
-        # iteratively generate file structure
         while len(path_ref) > len(base_path):
             current_dir = path_ref[len(base_path)]
             if current_dir not in data_ref:

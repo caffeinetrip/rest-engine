@@ -152,10 +152,9 @@ class MovingObject(CMSEntity):
                 self.get_component('object').set_state(x)
                 self.get_component('direction').value = x.removeprefix('idle/')
         
-        if state == 'idle/down' or state == 'idle/top':
+        if state == 'idle/down' or state == 'idle/top' or state == 'walk/down' or state == 'walk/top':
             self.get_component('object').get_component('mirror').flip_x = False
             
-
         self.get_component('prev_move').x = delta_move.x / delta
         self.get_component('prev_move').y = delta_move.y / delta
         self.get_component('speed').x += self.get_component('acceleration').x * delta
@@ -193,7 +192,7 @@ class MovingObject(CMSEntity):
                     collisions.down = movement.y > 0
                     collisions.up = movement.y < 0
                     self.get_component('speed').y = 0
-                    
+                        
             if movement.x != 0:
                 test_pos_x = [obj_pos.x + movement.x, obj_pos.y]
                 if self.check_walkable_collision(test_pos_x, level_map):
@@ -202,6 +201,10 @@ class MovingObject(CMSEntity):
                     collisions.right = movement.x > 0
                     collisions.left = movement.x < 0
                     self.get_component('speed').x = 0
+            
+            obj_pos.x = int(obj_pos.x + 0.5) 
+            obj_pos.y = int(obj_pos.y + 0.5)
+            
         else:
             obj_pos.y += movement.y
             tiles = level_map.nearby_grid_physics(self.center)
@@ -209,3 +212,5 @@ class MovingObject(CMSEntity):
             obj_pos.x += movement.x
             tiles = level_map.nearby_grid_physics(self.center)
             self.handle_collisions((movement.x, 0), tiles)
+            obj_pos.x = int(obj_pos.x + 0.5)
+            obj_pos.y = int(obj_pos.y + 0.5)

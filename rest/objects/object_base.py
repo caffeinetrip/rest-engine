@@ -2,6 +2,7 @@ import pygame
 from rest import G
 from rest.utils.cms import CMSEntity
 from components.engine.object_base_components import *
+from copy import copy
 
 ADJACENT_DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
@@ -45,6 +46,15 @@ class Object(CMSEntity):
         self.add_component('offset_coords', OffsetCoords(x=self.offset_coords[0], y=self.offset_coords[1]))
         self.add_component('source_image', SourceImage(image=self.source_image))
         self.add_component('render_image', RenderImage(image=self.render_image))
+
+        # Initialize shadow smoothing variables
+        self.current_shadow_radius = self.get_component('shadow').radius
+        self.current_x_off = 0.0
+        self.current_y_off = 0.0
+        self.target_shadow_radius = self.current_shadow_radius
+        self.target_x_off = 0.0
+        self.target_y_off = 0.0
+        self.lerp_speed = 5.0  # Controls how fast the interpolation happens (higher = faster)
 
     @property
     def center(self):
@@ -112,27 +122,25 @@ class Object(CMSEntity):
             self.get_component('source_image').image = self.sequence.img
 
     def draw_position(self, camera_offset=(0, 0)):
-        img_dims = self.render_image.get_size()
         pos = self.get_component('position')
         offset = self.get_component('offset_coords')
         specs = self.get_component('specs').data
-        modified = self.get_component('modified').changed
+        img_dims = self.render_image.get_size()
 
-        if not modified or specs['centered']:
-            center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs['centered'] else (0, 0)
-            return (int(pos.x - camera_offset[0] + offset.x - center_shift[0]),
-                    int(pos.y - camera_offset[1] + offset.y - center_shift[1]))
-
-        raw_dims = self.get_component('source_image').image.get_size()
-        size_delta = (img_dims[0] - raw_dims[0], img_dims[1] - raw_dims[1])
-        auto_shift = (-size_delta[0] // 2, -size_delta[1] // 2)
-        return (int(pos.x - camera_offset[0] + offset.x + auto_shift[0]),
-                int(pos.y - camera_offset[1] + offset.y + auto_shift[1]))
+        center_shift = (img_dims[0] // 2, img_dims[1] // 2) if specs.get('centered', False) else (0, 0)
+        render_x = int(pos.x + offset.x - center_shift[0] - camera_offset[0])
+        render_y = int(pos.y + offset.y - center_shift[1] - camera_offset[1])
+        return (render_x, render_y)
 
     def tick(self, delta):
         if self.source_type == 'sequences':
             self.sequence.update(delta)
             self.get_component('source_image').image = self.sequence.img
+
+        # Update shadow values with interpolation
+        self.current_shadow_radius += (self.target_shadow_radius - self.current_shadow_radius) * self.lerp_speed * delta
+        self.current_x_off += (self.target_x_off - self.current_x_off) * self.lerp_speed * delta
+        self.current_y_off += (self.target_y_off - self.current_y_off) * self.lerp_speed * delta
 
     def draw(self, surface, camera_offset=(0, 0)):
         if self.get_component('show').visible:
@@ -146,19 +154,38 @@ class Object(CMSEntity):
         shadow = self.get_component('shadow')
 
         if shadow.enabled:
-            shadow_surface = pygame.Surface((shadow.radius * 2, shadow.radius * 2), pygame.SRCALPHA)
+            # Calculate target shadow values (same logic as before)
+            self.target_shadow_radius = shadow.radius
+            self.target_x_off = 0.0
+            self.target_y_off = 0.0
+            
+            if 'rotate' in self.get_component('state').value:
+                self.target_shadow_radius -= 1
+            
+            if 'top' in self.get_component('state').value:
+                self.target_y_off -= 0.10
+            elif not 'down' in self.get_component('state').value:
+                if self.get_component('mirror').flip_x:
+                    self.target_x_off -= 0.10
+                else:
+                    self.target_x_off += 0.10
+            
+            # Use interpolated values
+            shadow_surface = pygame.Surface((self.current_shadow_radius * 2, self.current_shadow_radius * 2), pygame.SRCALPHA)
+            
             pygame.draw.ellipse(
                 shadow_surface,
                 shadow.color + (shadow.alpha,),
-                (0, 0, shadow.radius * 2, shadow.radius)
+                (0, 0, self.current_shadow_radius * 2, self.current_shadow_radius)
             )
             resize = self.get_component('resize')
-            adjusted_offset_x = shadow.offset_x * resize.scale_x
-            adjusted_offset_y = shadow.offset_y * resize.scale_y
+            adjusted_offset_x = (shadow.offset_x + self.current_x_off) * resize.scale_x
+            adjusted_offset_y = (shadow.offset_y + self.current_y_off) * resize.scale_y
             shadow_pos = (
                 int(pos[0] + adjusted_offset_x),
                 int(pos[1] + adjusted_offset_y)
             )
+            
             G.window.blit(
                 shadow_surface,
                 shadow_pos,

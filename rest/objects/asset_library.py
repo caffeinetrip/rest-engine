@@ -95,7 +95,7 @@ class AssetLibrary:
             else:
 
                 settings['sequences'] = {}
-                settings['initial'] = 'idle/down'  # Встановлюємо початковий стан
+                settings['initial'] = 'idle/down'
                 settings['category'] = 'entity' if object_dir == 'player' else 'object'
                 settings['centered'] = True if object_dir == 'player' else False
 

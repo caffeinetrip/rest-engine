@@ -56,8 +56,14 @@ class MoveInteractor(BaseInteraction, IOnEntityMove):
         if state == 'walk/top' or state == 'walk/down':
             entity.get_component('last_vertical_state').state = state
         
+        if state == 'rotate/right_down':
+            entity.get_component('last_vertical_state').state = 'walk/down'
+        
+        if state == 'rotate/right_top':
+            entity.get_component('last_vertical_state').state = 'walk/top'
+        
         if G.input.holded_keys_count > 2:
-            if state == 'idle/down' or state == 'idle/right' or state == 'walk/right':
+            if state == 'idle/down' or state == 'idle/right' or state == 'walk/right' or state == 'rotate/right_down' or state == 'rotate/right_top':
                 state = entity.get_component('last_vertical_state').state
 
         entity.get_component('object').set_state(state)
