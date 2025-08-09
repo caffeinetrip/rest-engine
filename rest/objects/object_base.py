@@ -47,14 +47,13 @@ class Object(CMSEntity):
         self.add_component('source_image', SourceImage(image=self.source_image))
         self.add_component('render_image', RenderImage(image=self.render_image))
 
-        # Initialize shadow smoothing variables
         self.current_shadow_radius = self.get_component('shadow').radius
         self.current_x_off = 0.0
         self.current_y_off = 0.0
         self.target_shadow_radius = self.current_shadow_radius
         self.target_x_off = 0.0
         self.target_y_off = 0.0
-        self.lerp_speed = 5.0  # Controls how fast the interpolation happens (higher = faster)
+        self.lerp_speed = 5.0
 
     @property
     def center(self):
@@ -137,7 +136,29 @@ class Object(CMSEntity):
             self.sequence.update(delta)
             self.get_component('source_image').image = self.sequence.img
 
-        # Update shadow values with interpolation
+        shadow = self.get_component('shadow')
+        state_value = self.get_component('state').value
+        mirror = self.get_component('mirror')
+
+        self.target_shadow_radius = shadow.radius
+        self.target_x_off = 0.0
+        self.target_y_off = 0.0
+        
+        if 'rotate' in state_value:
+            self.target_shadow_radius -= 1
+        
+        if 'top' in state_value:
+            self.target_y_off -= 0.05
+        elif 'down' in state_value:
+            self.target_y_off += 0.05
+        else:
+            if mirror.flip_x:
+                self.target_x_off += 0.1
+            else:
+                self.target_x_off += 0.15
+        
+        print(self.target_x_off)
+
         self.current_shadow_radius += (self.target_shadow_radius - self.current_shadow_radius) * self.lerp_speed * delta
         self.current_x_off += (self.target_x_off - self.current_x_off) * self.lerp_speed * delta
         self.current_y_off += (self.target_y_off - self.current_y_off) * self.lerp_speed * delta
@@ -154,23 +175,6 @@ class Object(CMSEntity):
         shadow = self.get_component('shadow')
 
         if shadow.enabled:
-            # Calculate target shadow values (same logic as before)
-            self.target_shadow_radius = shadow.radius
-            self.target_x_off = 0.0
-            self.target_y_off = 0.0
-            
-            if 'rotate' in self.get_component('state').value:
-                self.target_shadow_radius -= 1
-            
-            if 'top' in self.get_component('state').value:
-                self.target_y_off -= 0.10
-            elif not 'down' in self.get_component('state').value:
-                if self.get_component('mirror').flip_x:
-                    self.target_x_off -= 0.10
-                else:
-                    self.target_x_off += 0.10
-            
-            # Use interpolated values
             shadow_surface = pygame.Surface((self.current_shadow_radius * 2, self.current_shadow_radius * 2), pygame.SRCALPHA)
             
             pygame.draw.ellipse(
