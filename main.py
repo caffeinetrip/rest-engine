@@ -28,14 +28,15 @@ class MyGame(Game):
         self.camera.set_target(self.player.get_component('object'))
         self.camera.update()
 
+        if settings.fps_bar:
+            G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(200, 200, 200))
+
         G.object_collections.update(view_area=self.camera.visible_rect)
         
         self.player.get_component('object').physics_update(self.tilemap)
         
         self.tilemap.renderz(self.camera.visible_rect, offset=self.camera)
         G.object_collections.renderz(layer_group='game', camera_offset=self.camera)
-        
-        pygame.display.set_caption((str(round(G.window.fps, 1))))
         
         G.window.cycle()
         G.input.update(self)

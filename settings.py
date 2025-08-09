@@ -13,7 +13,7 @@ settings = Settings(
     
     # paths
     sound_path = 'content_data/sound_data',
-    font_path = None,
+    font_path = 'content_data/text',
     spritesheets_path = 'content_data/image_data/spritesheets',
     entities_path = 'content_data/image_data/entities',
     frag_path = 'content_data/shaders/shader.frag',

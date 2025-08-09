@@ -11,6 +11,8 @@ from .objects.object_collections import ObjectCollections
 from .misc.tilemap import Tilemap
 from .misc.camera import Camera
 
+from .text.text import TextEntity
+
 def init(settings):
     window = Window(
         dimensions=settings.window_size,
@@ -30,6 +32,8 @@ def init(settings):
     G.asset_library = AssetLibrary(settings.entities_path)
     G.asset_library.assets
     G.object_collections = ObjectCollections(spatial_collections=['entities'])
+    
+    G.text = TextEntity(settings.font_path)
 
     G.input = Input()
     

@@ -90,7 +90,6 @@ def recursive_file_op(path, func, filetype=None):
             data_ref = data_ref[current_dir]
             path_ref.pop(len(base_path))
 
-        # load assets
         for asset in f[2]:
             asset_type = asset.split('.')[-1]
             if (asset_type == filetype) or (filetype == None):

@@ -58,9 +58,9 @@ class TextEntity(CMSEntity):
         self.load()
         
     def load(self):
-        self.add_component('fonts', recursive_file_op(
-            self.get_component('path').value, Font, filetype=['png', 'ttf']
-        ))
+        self.add_component('fonts', Fonts(recursive_file_op(
+            self.get_component('path').value, Font
+        )))
         
     def __getitem__(self, key):
         return self.get_component('fonts').value[key]
@@ -107,7 +107,7 @@ class PreppedText(CMSEntity):
 
 class Font(CMSEntity):
     def __init__(self, path, color=(255, 255, 255), is_ttf=False, ttf_size=16):
-        super().__init__()
+        super().__init__(entity_id=f'font_{path}')
         
         self.components = {
             'is_ttf': IsTtf(value=is_ttf),
@@ -231,10 +231,10 @@ class Font(CMSEntity):
         line_height = self.get_component('ttf_font' if self.get_component('is_ttf').value else 'png_font').line_height
         return PreppedText(processed_text, (max_width, line_height + (line_height + self.get_component('font_obj').line_spacing) * y), self)
     
-    def renderz(self, text, loc, line_width=0, color=None, offset=(0, 0), group='default', z=0):
+    def renderz(self, text, loc, line_width=0, color=None, offset=(0, 0), group='ui', z=0):
         self.render(G.window, text, (loc[0] - offset[0], loc[1] - offset[1]), line_width=line_width, color=color, blit_kwargs={'group': group, 'z': z})
     
-    def renderzb(self, text, loc, line_width=0, color=None, bgcolor=None, offset=(0, 0), group='default', z=0, hide_chars=0):
+    def renderzb(self, text, loc, line_width=0, color=None, bgcolor=None, offset=(0, 0), group='ui', z=0, hide_chars=0):
         if self.get_component('is_ttf').value:
             for o in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 self.renderz(text, (loc[0] + o[0], loc[1] + o[1]), line_width=line_width, color=bgcolor, offset=offset, group=group, z=z - 1)
