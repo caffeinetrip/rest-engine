@@ -7,7 +7,7 @@ class Shadow(CMSComponentDefinition):
     radius: float = 6.5
     offset_x: float = 1.9
     offset_y: int = 12
-    alpha: int = 30
+    alpha: int = 20
     color: tuple = (0, 0, 0)
 
 class ShadowAnimationState(CMSComponentDefinition):

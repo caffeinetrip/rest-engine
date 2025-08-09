@@ -158,7 +158,7 @@ class Object(CMSEntity):
 
         if 'idle' in state_value and self.sequence:
             sequence_duration = 0.85
-            shadow_anim.pulse_frequency = 1.0 / sequence_duration if sequence_duration > 0 else 1.6
+            shadow_anim.pulse_frequency = 1.0 / sequence_duration 
             shadow_anim.pulse_phase += 2 * math.pi * shadow_anim.pulse_frequency * delta
 
     def draw(self, surface, camera_offset=(0, 0)):
