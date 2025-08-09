@@ -1,4 +1,5 @@
 import pygame
+import math
 from rest import G
 from rest.utils.cms import CMSEntity
 from components.engine.object_base_components import *
@@ -31,7 +32,8 @@ class Object(CMSEntity):
             'show': Show(visible=True),
             'modified': Modified(changed=False),
             'outline': Outline(color=None),
-            'shadow': Shadow()
+            'shadow': Shadow(),
+            'shadow_anim': ShadowAnimationState()
         }
 
         sequences = self.get_component('sequences').data
@@ -47,13 +49,9 @@ class Object(CMSEntity):
         self.add_component('source_image', SourceImage(image=self.source_image))
         self.add_component('render_image', RenderImage(image=self.render_image))
 
-        self.current_shadow_radius = self.get_component('shadow').radius
-        self.current_x_off = 0.0
-        self.current_y_off = 0.0
-        self.target_shadow_radius = self.current_shadow_radius
-        self.target_x_off = 0.0
-        self.target_y_off = 0.0
-        self.lerp_speed = 5.0
+        shadow_anim = self.get_component('shadow_anim')
+        shadow_anim.current_radius = self.get_component('shadow').radius
+        shadow_anim.target_radius = shadow_anim.current_radius
 
     @property
     def center(self):
@@ -136,32 +134,32 @@ class Object(CMSEntity):
             self.sequence.update(delta)
             self.get_component('source_image').image = self.sequence.img
 
-        shadow = self.get_component('shadow')
+        shadow_anim = self.get_component('shadow_anim')
         state_value = self.get_component('state').value
         mirror = self.get_component('mirror')
 
-        self.target_shadow_radius = shadow.radius
-        self.target_x_off = 0.0
-        self.target_y_off = 0.0
+        shadow_anim.target_radius = self.get_component('shadow').radius
+        shadow_anim.target_x_off = 0.0
+        shadow_anim.target_y_off = 0.0
         
         if 'rotate' in state_value:
-            self.target_shadow_radius -= 1
+            shadow_anim.target_radius -= 1
         
         if 'top' in state_value:
-            self.target_y_off -= 0.05
+            shadow_anim.target_y_off -= 0.05
         elif 'down' in state_value:
-            self.target_y_off += 0.05
-        else:
-            if mirror.flip_x:
-                self.target_x_off += 0.1
-            else:
-                self.target_x_off += 0.15
-        
-        print(self.target_x_off)
+            shadow_anim.target_y_off += 0.05
+        elif 'right' in state_value:
+            shadow_anim.target_x_off += 0.15 if not mirror.flip_x else -0.15
 
-        self.current_shadow_radius += (self.target_shadow_radius - self.current_shadow_radius) * self.lerp_speed * delta
-        self.current_x_off += (self.target_x_off - self.current_x_off) * self.lerp_speed * delta
-        self.current_y_off += (self.target_y_off - self.current_y_off) * self.lerp_speed * delta
+        shadow_anim.current_radius += (shadow_anim.target_radius - shadow_anim.current_radius) * shadow_anim.lerp_speed * delta
+        shadow_anim.current_x_off += (shadow_anim.target_x_off - shadow_anim.current_x_off) * shadow_anim.lerp_speed * delta
+        shadow_anim.current_y_off += (shadow_anim.target_y_off - shadow_anim.current_y_off) * shadow_anim.lerp_speed * delta
+
+        if 'idle' in state_value and self.sequence:
+            sequence_duration = 0.85
+            shadow_anim.pulse_frequency = 1.0 / sequence_duration if sequence_duration > 0 else 1.6
+            shadow_anim.pulse_phase += 2 * math.pi * shadow_anim.pulse_frequency * delta
 
     def draw(self, surface, camera_offset=(0, 0)):
         if self.get_component('show').visible:
@@ -173,21 +171,26 @@ class Object(CMSEntity):
         
         pos = self.draw_position(camera_offset)
         shadow = self.get_component('shadow')
+        shadow_anim = self.get_component('shadow_anim')
 
         if shadow.enabled:
-            shadow_surface = pygame.Surface((self.current_shadow_radius * 2, self.current_shadow_radius * 2), pygame.SRCALPHA)
+            effective_radius = shadow_anim.current_radius
+            if 'idle' in self.get_component('state').value:
+                effective_radius += shadow_anim.pulse_amplitude * math.sin(shadow_anim.pulse_phase)
+            shadow_surface = pygame.Surface((effective_radius * 2, effective_radius * 2), pygame.SRCALPHA)
             
             pygame.draw.ellipse(
                 shadow_surface,
                 shadow.color + (shadow.alpha,),
-                (0, 0, self.current_shadow_radius * 2, self.current_shadow_radius)
+                (0, 0, effective_radius * 2, effective_radius)
             )
             resize = self.get_component('resize')
-            adjusted_offset_x = (shadow.offset_x + self.current_x_off) * resize.scale_x
-            adjusted_offset_y = (shadow.offset_y + self.current_y_off) * resize.scale_y
+            adjusted_offset_x = (shadow.offset_x + shadow_anim.current_x_off) * resize.scale_x
+            adjusted_offset_y = (shadow.offset_y + shadow_anim.current_y_off) * resize.scale_y
+            radius_diff = effective_radius - shadow_anim.current_radius
             shadow_pos = (
-                int(pos[0] + adjusted_offset_x),
-                int(pos[1] + adjusted_offset_y)
+                int(pos[0] + adjusted_offset_x - radius_diff),
+                int(pos[1] + adjusted_offset_y - radius_diff)
             )
             
             G.window.blit(

@@ -22,7 +22,7 @@
                 0,
                 0
             ],
-            "rate": 1.0,
+            "rate": 0.7,
             "repeat": true,
             "frozen": false,
             "durations": [
@@ -37,7 +37,7 @@
                 0,
                 0
             ],
-            "rate": 1.0,
+            "rate": 0.7,
             "repeat": true,
             "frozen": false,
             "durations": [
@@ -52,7 +52,7 @@
                 0,
                 0
             ],
-            "rate": 1.0,
+            "rate": 0.7,
             "repeat": true,
             "frozen": false,
             "durations": [

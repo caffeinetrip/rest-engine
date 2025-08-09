@@ -7,9 +7,21 @@ class Shadow(CMSComponentDefinition):
     radius: float = 6.5
     offset_x: float = 1.9
     offset_y: int = 12
-    alpha: int = 35
+    alpha: int = 30
     color: tuple = (0, 0, 0)
 
+class ShadowAnimationState(CMSComponentDefinition):
+    current_radius: float = 6.5
+    current_x_off: float = 0.0
+    current_y_off: float = 0.0
+    target_radius: float = 6.5
+    target_x_off: float = 0.0
+    target_y_off: float = 0.0
+    lerp_speed: float = 15.0
+    pulse_phase: float = 0
+    pulse_amplitude: float = 0.005
+    pulse_frequency: float = 1.0
+    
 class Position(CMSComponentDefinition):
     x: int
     y: int
