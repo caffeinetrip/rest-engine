@@ -29,15 +29,16 @@ class MyGame(Game):
         self.camera.update()
 
         if settings.fps_bar:
-            G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(200, 200, 200))
+            G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(145, 145, 145))
 
         G.object_collections.update(view_area=self.camera.visible_rect)
         
         self.player.get_component('object').physics_update(self.tilemap)
         
-        self.tilemap.renderz(self.camera.visible_rect, offset=self.camera)
+
+        self.tilemap.renderz(self.camera.visible_rect, self.player.get_component('object').get_component('object').hitbox, offset=self.camera)
         G.object_collections.renderz(layer_group='game', camera_offset=self.camera)
-        
+         
         G.window.cycle()
         G.input.update(self)
 

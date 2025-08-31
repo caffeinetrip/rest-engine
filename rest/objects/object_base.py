@@ -33,7 +33,8 @@ class Object(CMSEntity):
             'modified': Modified(changed=False),
             'outline': Outline(color=None),
             'shadow': Shadow(),
-            'shadow_anim': ShadowAnimationState()
+            'shadow_anim': ShadowAnimationState(),
+            'draw_position': DrawPosition(x=0,y=0)
         }
 
         sequences = self.get_component('sequences').data
@@ -170,6 +171,8 @@ class Object(CMSEntity):
             return
         
         pos = self.draw_position(camera_offset)
+        self.get_component('draw_position').x, self.get_component('draw_position').y = pos
+        
         shadow = self.get_component('shadow')
         shadow_anim = self.get_component('shadow_anim')
 

@@ -1,29 +1,25 @@
 import pygame, copy
-
 from rest.utils.io import read_tjson, write_tjson
 from rest.objects.object_sectors import Sectors
 from rest import G
+from collections import deque
 
 BORDERS = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (0, 0)]
 
-NON_WALKABLE_TILES = [
-    'water',
-    'lava',
-    'wall',
-    'pit',
-    'spikes',
-    'void',
-    'barrier',
-    'deep_water',
-    'acid',
-    'fire'
-]
+def basic_tile_render(tile, offset=(0, 0), group='default', opacity=255):
+    if opacity != 255:
+        img = tile.img.copy()
+        img.set_alpha(opacity)
+    else:
+        img = tile.img
 
-
-def basic_tile_render(tile, offset=(0, 0), group='default'):
-    G.window.blit(tile.img, (tile.raw_pos[0] + tile.offset[0] - offset[0],
-                             tile.raw_pos[1] + tile.offset[1] - offset[1]), z=tile.layer, group=group)
-
+    G.window.blit(
+        img,
+        (tile.raw_pos[0] + tile.offset[0] - offset[0],
+         tile.raw_pos[1] + tile.offset[1] - offset[1]),
+        z=tile.layer + (10000000 if 'decor' in tile.group else 0),
+        group=group
+    )
 
 class Tile:
     def __init__(self, group, tile_id=(0, 0), pos=(0, 0), layer=0, custom_data=''):
@@ -38,10 +34,9 @@ class Tile:
         self.flags = set(self.config['flags'] if 'flags' in self.config else ['solid'])
         self.physics_type = None
         self.custom_data = custom_data
-        self.walkable = True if self.group not in NON_WALKABLE_TILES else False
 
-    def render(self, offset=(0, 0), group='default'):
-        self.render_func(self, offset=offset, group=group)
+    def render(self, offset=(0, 0), group='default', opacity=255):
+        self.render_func(self, offset=offset, group=group, opacity=opacity)
 
     def primitive_render(self, surf, offset=(0, 0)):
         surf.blit(self.img,
@@ -52,7 +47,6 @@ class Tile:
 
     def change_id(self, tile_id):
         self.tile_id = tile_id
-
         self.img = G.assets.spritesheets[self.group]['assets'][tile_id]
         self.config = G.assets.spritesheets[self.group]['config'][tile_id]
         if self.group in G.assets.custom_tile_renderers:
@@ -85,7 +79,6 @@ class Tile:
                 neighbors[tuple(offset[:2])] = 'edge'
         return neighbors
 
-
 class Tilemap:
     def __init__(self, tile_size=(16, 16), dimensions=(16, 16)):
         self.tile_size = tuple(tile_size)
@@ -111,11 +104,9 @@ class Tilemap:
             'offgrid_tiles': self.offgrid_tiles.export(lambda x: x.export()),
             'dimensions': self.dimensions
         }
-
         for loc in self.grid_tiles:
             output['grid_tiles'][loc] = {layer: self.grid_tiles[loc][layer].export()
                                          for layer in self.grid_tiles[loc]}
-
         write_tjson(path, output)
 
     def in_map(self, gridpos):
@@ -123,14 +114,11 @@ class Tilemap:
 
     def get_tiles(self, include_grid=True, include_offgrid=True):
         tiles = []
-
         if include_grid:
             for loc_dict in self.grid_tiles.values():
                 tiles.extend(loc_dict.values())
-
         if include_offgrid:
             tiles.extend(self.offgrid_tiles.objects.values())
-
         return tiles
 
     def replace_tiles(self, new_tiles, ongrid=True):
@@ -144,7 +132,6 @@ class Tilemap:
                 tile = tile.shift_clone((tile.grid_pos[0] + offset[0], tile.grid_pos[1] + offset[1]))
                 if spawn_hook(tile.export(), True):
                     self.insert(tile, ongrid=True)
-
         for tile in tilemap.offgrid_tiles.objects.values():
             tile = tile.shift_clone(
                 (tile.grid_pos[0] + offset[0] * self.tile_size[0], tile.grid_pos[1] + offset[1] * self.tile_size[1]))
@@ -156,7 +143,6 @@ class Tilemap:
         self.reset()
         self.tile_size = tuple(data['tile_size'])
         self.dimensions = tuple(data['dimensions'])
-
         for loc in data['grid_tiles']:
             for layer in data['grid_tiles'][loc]:
                 tile_data = data['grid_tiles'][loc][layer]
@@ -166,7 +152,6 @@ class Tilemap:
                         Tile(tile_data['group'], tile_id=tuple(tile_data['tile_id']),
                              pos=tuple(tile_data['pos']), layer=tile_data['layer'],
                              custom_data=custom_data))
-
         for tile_data in data['offgrid_tiles']['objects'].values():
             if spawn_hook(tile_data, False):
                 custom_data = tile_data.get('c', '')
@@ -177,20 +162,15 @@ class Tilemap:
 
     def insert(self, tile, ongrid=True):
         tile.attach(self, ongrid=ongrid)
-
         if ongrid:
             if self.demensional_lock and not self.in_map(tile.grid_pos):
                 return
-
             if tile.grid_pos not in self.grid_tiles:
                 self.grid_tiles[tile.grid_pos] = {}
-
             self.grid_tiles[tile.grid_pos][tile.layer] = tile
-
             if tile.group in ('grass', 'bridge', '01') and tile.physics_type:
                 if tile.grid_pos not in self.physics_map:
                     self.physics_map[tile.grid_pos] = []
-
                 self.physics_map[tile.grid_pos].append((self.physics_priority[tile.physics_type], self.i, tile))
                 self.physics_map[tile.grid_pos].sort(reverse=True)
                 self.i += 1
@@ -198,40 +178,8 @@ class Tilemap:
             pos = (tile.raw_pos[0] / self.tile_size[0], tile.raw_pos[1] / self.tile_size[1])
             if self.demensional_lock and not self.in_map(pos):
                 return
-
             self.offgrid_tiles.add_raw(tile, tile.rect, tag=True)
-
         return True
-
-    def is_walkable_pos(self, grid_pos, check_layer=None):
-        if not self.in_map(grid_pos):
-            return False
-
-        if grid_pos not in self.grid_tiles:
-            return True
-
-        tiles = self.grid_tiles[grid_pos]
-
-        if check_layer is not None:
-            if check_layer in tiles:
-                return tiles[check_layer].walkable
-            return True
-        else:
-            for tile in tiles.values():
-                if not tile.walkable:
-                    return False
-            return True
-
-    def is_walkable_world_pos(self, world_pos, check_layer=None):
-        grid_pos = (int(world_pos[0] // self.tile_size[0]), int(world_pos[1] // self.tile_size[1]))
-        return self.is_walkable_pos(grid_pos, check_layer)
-
-    def get_walkable_positions_in_rect(self, rect, check_layer=None):
-        walkable_positions = []
-        for loc in self.rect_grid_locs(rect):
-            if self.is_walkable_pos(loc, check_layer):
-                walkable_positions.append(loc)
-        return walkable_positions
 
     def area_masks(self, rect):
         surfs = {}
@@ -243,31 +191,24 @@ class Tilemap:
                         surfs[layer] = pygame.Surface(rect.size, pygame.SRCALPHA)
                     tile = layers[layer]
                     tile.primitive_render(surfs[layer], offset=rect.topleft)
-
         return {layer: pygame.mask.from_surface(surfs[layer]) for layer in surfs}
 
     def optimize_area(self, rect, layer=0):
         masks = self.area_masks(rect)
         layer_ids = sorted(list(masks))
-
         if layer in masks:
             involved_layers = layer_ids[layer_ids.index(layer) + 1:]
-
             if involved_layers:
                 combined_mask = masks[involved_layers[0]]
-
                 for top_layer in involved_layers[1:]:
                     combined_mask.draw(masks[top_layer], (0, 0))
-
                 combined_mask.invert()
-
                 for loc in self.rect_grid_locs(rect):
                     if loc in self.grid_tiles and layer in self.grid_tiles[loc]:
                         surf = pygame.Surface(rect.size, pygame.SRCALPHA)
                         tile = self.grid_tiles[loc][layer]
                         tile.primitive_render(surf, offset=rect.topleft)
                         tile_mask = pygame.mask.from_surface(surf)
-
                         if not tile_mask.overlap_area(combined_mask, (0, 0)):
                             self.grid_delete(loc, layer=layer)
 
@@ -279,7 +220,6 @@ class Tilemap:
                     locs.append(self.grid_tiles[loc])
         else:
             locs = list(self.grid_tiles.values())
-
         for loc in locs:
             if layer in loc:
                 tile = loc[layer]
@@ -287,7 +227,6 @@ class Tilemap:
                     assignment = G.assets.autotile_config['assignment'][tile.group]
                     checks = G.assets.autotile_config['checks'][assignment]
                     neighbors = tile.neighbors(checks, handle_edge=True)
-
                     for nloc in checks:
                         if nloc in neighbors:
                             if neighbors[nloc] == 'edge':
@@ -301,24 +240,19 @@ class Tilemap:
                                     neighbors[nloc].add('notself')
                         else:
                             neighbors[nloc] = set(('none', 'notself'))
-
                     new_type = None
                     mappings = G.assets.autotile_config['mappings'][assignment]
-
                     for tile_type, tile_rules in mappings.items():
                         if tile_rules == 'default':
                             new_type = tile_type
                             continue
-
                         valid = True
                         for rule in tile_rules:
                             if rule[2] not in neighbors[tuple(rule[:2])]:
                                 valid = False
                                 break
-
                         if valid:
                             new_type = tile_type
-
                     if new_type:
                         tile.change_id(new_type)
 
@@ -326,23 +260,19 @@ class Tilemap:
         check_locs = {tile.grid_pos}
         fill_locs = set()
         borders = [(1, 0), (0, 1), (-1, 0), (0, -1)]
-
         while check_locs and len(fill_locs) <= 2048:
             loc = check_locs.pop()
-
             valid = True
             if loc in self.grid_tiles and tile.layer in self.grid_tiles[loc]:
                 valid = False
             if not self.in_map(loc):
                 valid = False
-
             if valid:
                 fill_locs.add(loc)
                 for border in borders:
                     check_loc = (loc[0] + border[0], loc[1] + border[1])
                     if check_loc not in fill_locs and check_loc not in check_locs:
                         check_locs.add(check_loc)
-
         for loc in fill_locs:
             self.insert(tile.shift_clone(loc))
 
@@ -360,7 +290,6 @@ class Tilemap:
     def rect_delete(self, rect, layer=None):
         topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
         bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
-
         for y in range(topleft[1], bottomright[1] + 1):
             for x in range(topleft[0], bottomright[0] + 1):
                 grid_pos = (x, y)
@@ -383,7 +312,6 @@ class Tilemap:
                             del self.grid_tiles[grid_pos]
                             if grid_pos in self.physics_map:
                                 del self.physics_map[grid_pos]
-
         tiles = self.offgrid_tiles.query(rect)
         if layer is not None:
             for tile in tiles:
@@ -397,12 +325,10 @@ class Tilemap:
     def nearby_grid_physics(self, pos):
         grid_pos = (pos[0] // self.tile_size[0], pos[1] // self.tile_size[1])
         tiles = []
-
         for border in BORDERS:
             check_pos = (grid_pos[0] + border[0], grid_pos[1] + border[1])
             if check_pos in self.physics_map:
                 tiles.append(self.physics_map[check_pos][0][2])
-
         return tiles
 
     def gridtile(self, pos):
@@ -417,10 +343,8 @@ class Tilemap:
 
     def count_tiles(self):
         count = {'grid': 0, 'offgrid': len(self.offgrid_tiles.objects)}
-
         for loc in self.grid_tiles:
             count['grid'] += len(self.grid_tiles[loc])
-
         return count
 
     def count_rect_tiles(self, rect):
@@ -430,56 +354,86 @@ class Tilemap:
     def visible_layer_contains(self, rect, layer):
         tile_types = set()
         layers = self.rect_select(rect)
-
         if layer in layers:
             for tile in layers[layer]:
                 tile_types.add(tile.group)
-
         return tile_types
 
-    def render_prep(self, rect, offset=(0, 0), group='default'):
+    def get_connected_decor(self, start_tile):
+        queue = deque([start_tile])
+        visited = set()
+        while queue:
+            tile = queue.popleft()
+            if tile in visited:
+                continue
+            visited.add(tile)
+            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                loc = (tile.grid_pos[0] + dx, tile.grid_pos[1] + dy)
+                if loc in self.grid_tiles:
+                    for l in self.grid_tiles[loc]:
+                        nt = self.grid_tiles[loc][l]
+                        if 'decor' in nt.group and abs(tile.grid_pos[0] - nt.grid_pos[0]) <= 1 and abs(tile.grid_pos[1] - nt.grid_pos[1]) <= 1:
+                            queue.append(nt)
+        return visited
+
+    def renderz(self, rect, player_rect, offset=(0, 0), group='default'):
         topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
         bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
-        blits = []
-
+        triggered = []
+        decor_tiles = []
+        offgrid_tiles = self.offgrid_tiles.query(rect)
         for y in range(topleft[1], bottomright[1] + 1):
             for x in range(topleft[0], bottomright[0] + 1):
-                tiles = self.gridtile((x, y))
-                for tile in tiles.values():
-                    blits.append((tile.img, (tile.raw_pos[0] + tile.offset[0] - offset[0],
-                                             tile.raw_pos[1] + tile.offset[1] - offset[1]), tile.layer, group))
-
-        for tile in self.offgrid_tiles.query(rect):
-            blits.append(
-                (tile.img, (tile.raw_pos[0] + tile.offset[0] - offset[0],
-                            tile.raw_pos[1] + tile.offset[1] - offset[1]),
-                 tile.layer, group))
-
-        return blits
-
-    def renderz(self, rect, offset=(0, 0), group='default'):
-        topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
-        bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
-
+                for tile in self.gridtile((x, y)).values():
+                    if 'decor' in tile.group:
+                        decor_tiles.append(tile)
+                        if player_rect.colliderect(tile.rect):
+                            inter = player_rect.clip(tile.rect)
+                            if min(inter.width, inter.height) >= 5:
+                                triggered.append(tile)
+        for tile in offgrid_tiles:
+            if 'decor' in tile.group:
+                decor_tiles.append(tile)
+                if player_rect.colliderect(tile.rect):
+                    inter = player_rect.clip(tile.rect)
+                    if min(inter.width, inter.height) >= 5:
+                        triggered.append(tile)
+                        
+        transparent_tiles = set()
+        for t in triggered:
+            connected = self.get_connected_decor(t)
+            transparent_tiles.update(connected)
         for y in range(topleft[1], bottomright[1] + 1):
             for x in range(topleft[0], bottomright[0] + 1):
                 for tile in self.gridtile((x, y)).values():
                     if tile.group != 'walk_zone':
-                        tile.render(offset=offset, group=group)
-
-        for tile in self.offgrid_tiles.query(rect):
-            tile.render(offset=offset, group=group)
+                        opacity = 255
+                        if 'decor' in tile.group:
+                            target = 128 if tile in transparent_tiles else 255
+                            if not hasattr(tile, 'current_opacity'):
+                                tile.current_opacity = 255
+                            tile.current_opacity += (target - tile.current_opacity) * 1 * G.window.dt
+                            opacity = int(tile.current_opacity)
+                        tile.render(offset=offset, group=group, opacity=opacity)
+                        
+        for tile in offgrid_tiles:
+            opacity = 255
+            if 'decor' in tile.group:
+                target = 128 if tile in transparent_tiles else 255
+                if not hasattr(tile, 'current_opacity'):
+                    tile.current_opacity = 255
+                tile.current_opacity += (target - tile.current_opacity) * 1 * G.window.dt
+                opacity = int(tile.current_opacity)
+            tile.render(offset=offset, group=group, opacity=opacity)
 
     def renderz_only(self, rect, offset=(0, 0), group='default', only=set()):
         topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
         bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
-
         for y in range(topleft[1], bottomright[1] + 1):
             for x in range(topleft[0], bottomright[0] + 1):
                 for tile in self.gridtile((x, y)).values():
                     if tile.group in only:
                         tile.render(offset=offset, group=group)
-
         for tile in self.offgrid_tiles.query(rect):
             if tile.group in only:
                 tile.render(offset=offset, group=group)
@@ -494,7 +448,6 @@ class Tilemap:
         topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
         bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
         layers = {}
-
         for y in range(topleft[1], bottomright[1] + 1):
             for x in range(topleft[0], bottomright[0] + 1):
                 tiles = self.gridtile((x, y))
@@ -502,11 +455,9 @@ class Tilemap:
                     if k not in layers:
                         layers[k] = []
                     layers[k].append(v)
-
         if not gridonly:
             for tile in self.offgrid_tiles.query(rect):
                 if tile.layer not in layers:
                     layers[tile.layer] = []
                 layers[tile.layer].append(tile)
-
         return layers

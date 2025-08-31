@@ -47,6 +47,9 @@ class Window:
     def blit(self, surface, pos, z=0, group='default'):
         if group in self.surfaces:
             self.surfaces[group].blit(surface, pos)
+            
+    def draw_rect(self, rect, color=(255,0,0), group='default'):
+        pygame.draw.rect(self.surfaces.get(group), color, rect)
 
     def initialize_opengl(self):
         if self.initialized_opengl:

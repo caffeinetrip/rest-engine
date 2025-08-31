@@ -1,5 +1,5 @@
 from rest.utils.cms import CMSComponentDefinition
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 import pygame
 
 class Shadow(CMSComponentDefinition):
@@ -84,3 +84,7 @@ class SourceImage(CMSComponentDefinition):
 
 class RenderImage(CMSComponentDefinition):
     image: pygame.Surface
+    
+class DrawPosition(CMSComponentDefinition):
+    x: int
+    y: int

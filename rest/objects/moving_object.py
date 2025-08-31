@@ -1,9 +1,9 @@
+import pygame
 from .object_base import Object
 from rest import G
 from rest.utils.cms import CMSEntity
 from components.engine.moving_object_components import *
 from rest.utils.game_math import get_state_in_diapasone
-import pygame
 
 WALKABLE_TILES = ['walk_zone']
 
@@ -13,7 +13,7 @@ def apply_friction(value, amount):
     return value - amount if value > 0 else value + amount
 
 class MovingObject(CMSEntity):
-    def __init__(self, entity_id, position=(0, 0), moving=True, z=0):
+    def __init__(self, entity_id, position=(0, 0), moving=True, z=-1000000000): 
         super().__init__(entity_id)
         self.entity_id = entity_id
         self.object = Object(entity_id, position, z)
@@ -214,3 +214,4 @@ class MovingObject(CMSEntity):
             self.handle_collisions((movement.x, 0), tiles)
             obj_pos.x = int(obj_pos.x + 0.5)
             obj_pos.y = int(obj_pos.y + 0.5)
+    
