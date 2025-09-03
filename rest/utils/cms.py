@@ -20,3 +20,6 @@ class CMSEntity:
     
     def get_component(self, name: str) -> None | CMSComponentDefinition:
         return self.components.get(name)
+
+    def has_component(self, name: str):
+        return name in self.components

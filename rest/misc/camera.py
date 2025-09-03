@@ -1,7 +1,7 @@
 import pygame
-
 from ..utils.gfx import smooth_approach
 from rest import G
+import logging
 
 class Camera:
     def __init__(self, size, pos=(0, 0), slowness=1, tilemap_lock=None):
@@ -17,7 +17,9 @@ class Camera:
     @property
     def target(self):
         if self.target_object:
-            return (self.target_object.center[0] - self.size[0] // 2, self.target_object.center[1] - self.size[1] // 2)
+            # Center on player's feet (rect.bottom) instead of center
+            return (self.target_object.center[0] - self.size[0] // 2, 
+                    self.target_object.rect.bottom - self.size[1] // 2)
         elif self.target_pos:
             return (self.target_pos[0] - self.size[0] // 2, self.target_pos[0] - self.size[1] // 2)
         
@@ -67,5 +69,4 @@ class Camera:
                 self.pos[0] = max(0, min(self.tilemap_lock.dimensions[0] * self.tilemap_lock.tile_size[0] - self.size[0], self.pos[0]))
                 self.pos[1] = max(0, min(self.tilemap_lock.dimensions[1] * self.tilemap_lock.tile_size[1] - self.size[1], self.pos[1]))
         self.int_pos = (int(self.pos[0]), int(self.pos[1]))
-    
-    
+        logging.debug(f"Camera pos: {self.int_pos}")

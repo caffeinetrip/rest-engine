@@ -86,9 +86,19 @@ class ObjectSectors:
     def total_objects(self):
         return sum([len(self.sectors[sector]) for sector in self.sectors])
 
+    # In object_sectors.py, register method
     def register(self, entity, collection_name='main'):
         if id(entity) not in self.entity_locations:
-            sector_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size), int(entity.get_component('object').get_component('position').y // self.sector_size))
+            if hasattr(entity, 'get_component'):
+                sector_coords = (
+                    int(entity.get_component('object').get_component('position').x // self.sector_size),
+                    int(entity.get_component('object').get_component('position').y // self.sector_size)
+                )
+            else:
+                sector_coords = (
+                    int(entity.pos[0] // self.sector_size),
+                    int(entity.pos[1] // self.sector_size)
+                )
             if sector_coords not in self.sectors:
                 self.sectors[sector_coords] = []
             self.sectors[sector_coords].append(entity)
@@ -96,6 +106,7 @@ class ObjectSectors:
             entity._collection = collection_name
             if collection_name not in self.visible_objects:
                 self.visible_objects[collection_name] = []
+
 
     def unregister(self, entity):
         if id(entity) in self.entity_locations:
@@ -132,8 +143,12 @@ class ObjectSectors:
                 sector_coords = (x, y)
                 if sector_coords in self.sectors:
                     for entity in self.sectors[sector_coords]:
-                        new_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size),
-                                      int(entity.get_component('object').get_component('position').y // self.sector_size))
+                        if not hasattr(entity, 'components'):
+                            new_coords = (int(entity.pos[0] // self.sector_size),
+                                          int(entity.pos[1] // self.sector_size))
+                        else:
+                            new_coords = (int(entity.get_component('object').get_component('position').x // self.sector_size),
+                                          int(entity.get_component('object').get_component('position').y // self.sector_size))
                         if self.entity_locations[id(entity)] != new_coords:
                             old_coords = self.entity_locations[id(entity)]
                             self.entity_locations[id(entity)] = new_coords

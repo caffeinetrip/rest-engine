@@ -456,11 +456,21 @@ class Tilemap:
         if objects_collection:
             for collection in objects_collection.collections:
                 for game_object in objects_collection.collections[collection]:
-                    z_value = game_object.get_component('object').get_component('z').val
-                    renderable_items.append(RenderableItem(
-                        z_value,
-                        lambda go=game_object, o=offset, g=group: go.get_component('object').renderz(camera_offset=o, group=g)
-                    ))
+                    if not hasattr(game_object, 'components'):
+                        z_value = game_object.z
+                        
+                        renderable_items.append(RenderableItem(
+                            z_value,
+                            lambda go=game_object, o=offset, g=group: go.renderz(camera_offset=o, group=g)
+                        ))
+                        
+                    else:
+                        z_value = game_object.get_component('object').get_component('z').val
+                        
+                        renderable_items.append(RenderableItem(
+                            z_value,
+                            lambda go=game_object, o=offset, g=group: go.get_component('object').renderz(camera_offset=o, group=g)
+                        ))
         
         return renderable_items
 
