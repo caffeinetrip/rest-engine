@@ -1,5 +1,4 @@
 import pygame
-
 from .object_sectors import ObjectSectors
 from rest import G
 
@@ -42,12 +41,12 @@ class ObjectCollections:
                         if collection in self.spatial_collections:
                             self.object_sectors.unregister(game_object)
         else:
-            for collection in self.collections:
-                self.update(collection, release_lock=False)
+            for coll in self.collections:
+                self.update(coll, release_lock=False)
 
         if release_lock:
             self.processing = False
-            if len(self.pending_items):
+            if self.pending_items:
                 for item in self.pending_items:
                     self.register(*item)
                 self.pending_items = []
@@ -58,14 +57,24 @@ class ObjectCollections:
                 for game_object in self.collections[collection]:
                     game_object.render(surface, camera_offset=camera_offset)
         else:
-            for collection in self.collections:
-                self.render(surface, collection=collection, camera_offset=camera_offset)
+            for coll in self.collections:
+                self.render(surface, collection=coll, camera_offset=camera_offset)
 
     def renderz(self, collection=None, layer_group='main', camera_offset=(0, 0)):
         if collection:
             if collection in self.collections:
-                for game_object in self.collections[collection]:
+                sorted_objects = sorted(
+                    self.collections[collection],
+                    key=lambda go: go.get_component('object').get_component('z').val
+                )
+                for game_object in sorted_objects:
                     game_object.get_component('object').renderz(camera_offset=camera_offset, group=layer_group)
+
         else:
-            for collection in self.collections:
-                self.renderz(collection=collection, layer_group=layer_group, camera_offset=camera_offset)
+            all_objects = []
+            for coll in self.collections:
+                all_objects.extend(self.collections[coll])
+            sorted_all = sorted(all_objects, key=lambda go: go.get_component('object').get_component('z').val)
+            
+            for game_object in sorted_all:
+                game_object.get_component('object').renderz(camera_offset=camera_offset, group=layer_group)

@@ -21,6 +21,14 @@ def basic_tile_render(tile, offset=(0, 0), group='default', opacity=255):
         group=group
     )
 
+class RenderableItem:
+    def __init__(self, z, render_func):
+        self.z = z
+        self.render_func = render_func
+    
+    def render(self):
+        self.render_func()
+
 class Tile:
     def __init__(self, group, tile_id=(0, 0), pos=(0, 0), layer=0, custom_data=''):
         self.group = group
@@ -85,6 +93,8 @@ class Tilemap:
         self.physics_priority = {'solid': 1.0, 'dropthrough': 0.9, 'rampr': 0.8, 'rampl': 0.7}
         self.dimensions = tuple(dimensions)
         self.demensional_lock = True
+        self.decor_opacity_lerp_speed_in = 2.0
+        self.decor_opacity_lerp_speed_out = 4.0
         self.reset()
 
     @property
@@ -372,9 +382,87 @@ class Tilemap:
                 if loc in self.grid_tiles:
                     for l in self.grid_tiles[loc]:
                         nt = self.grid_tiles[loc][l]
-                        if 'decor' in nt.group and abs(tile.grid_pos[0] - nt.grid_pos[0]) <= 1 and abs(tile.grid_pos[1] - nt.grid_pos[1]) <= 1:
+                        if 'decor' in nt.group and abs(tile.grid_pos[0] - nt.grid_pos[0]) <= 1 and abs(
+                                tile.grid_pos[1] - nt.grid_pos[1]) <= 1:
                             queue.append(nt)
         return visited
+
+    def get_renderable_items(self, rect, player_rect, offset=(0, 0), group='default', objects_collection=None):
+        topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
+        bottomright = (rect.right // self.tile_size[0], rect.bottom // self.tile_size[1])
+        triggered = []
+        decor_tiles = []
+        renderable_items = []
+        
+        offgrid_tiles = self.offgrid_tiles.query(rect)
+        for y in range(topleft[1], bottomright[1] + 1):
+            for x in range(topleft[0], bottomright[0] + 1):
+                for tile in self.gridtile((x, y)).values():
+                    if 'decor' in tile.group:
+                        decor_tiles.append(tile)
+                        if player_rect.colliderect(tile.rect):
+                            inter = player_rect.clip(tile.rect)
+                            if inter.width >= 8 and inter.height >= 8:
+                                triggered.append(tile)
+        
+        for tile in offgrid_tiles:
+            if 'decor' in tile.group:
+                decor_tiles.append(tile)
+                if player_rect.colliderect(tile.rect):
+                    inter = player_rect.clip(tile.rect)
+                    if inter.width >= 8 and inter.height >= 8:
+                        triggered.append(tile)
+                        
+        transparent_tiles = set()
+        for t in triggered:
+            connected = self.get_connected_decor(t)
+            transparent_tiles.update(connected)
+        
+        for y in range(topleft[1], bottomright[1] + 1):
+            for x in range(topleft[0], bottomright[0] + 1):
+                for tile in self.gridtile((x, y)).values():
+                    if tile.group != 'walk_zone':
+                        opacity = 255
+                        if 'decor' in tile.group:
+                            target = 128 if tile in transparent_tiles else 255
+                            if not hasattr(tile, 'current_opacity'):
+                                tile.current_opacity = 255
+                            lerp_speed = self.decor_opacity_lerp_speed_in if tile in transparent_tiles else self.decor_opacity_lerp_speed_out
+                            tile.current_opacity += (target - tile.current_opacity) * lerp_speed * G.window.dt
+                            opacity = int(tile.current_opacity)
+                        
+                        z_value = tile.layer + (10000000 if 'decor' in tile.group else 0)
+                        renderable_items.append(RenderableItem(
+                            z_value,
+                            lambda t=tile, o=offset, g=group, op=opacity: t.render(offset=o, group=g, opacity=op)
+                        ))
+                        
+        for tile in offgrid_tiles:
+            opacity = 255
+            if 'decor' in tile.group:
+                target = 128 if tile in transparent_tiles else 255
+                if not hasattr(tile, 'current_opacity'):
+                    tile.current_opacity = 255
+                lerp_speed = self.decor_opacity_lerp_speed_in if tile in transparent_tiles else self.decor_opacity_lerp_speed_out
+                tile.current_opacity += (target - tile.current_opacity) * lerp_speed * G.window.dt
+                opacity = int(tile.current_opacity)
+            
+            z_value = tile.layer + (10000000 if 'decor' in tile.group else 0)
+            renderable_items.append(RenderableItem(
+                z_value,
+                lambda t=tile, o=offset, g=group, op=opacity: t.render(offset=o, group=g, opacity=op)
+            ))
+        
+        if objects_collection:
+            for collection in objects_collection.collections:
+                for game_object in objects_collection.collections[collection]:
+                    z_value = game_object.get_component('object').get_component('z').val
+                    renderable_items.append(RenderableItem(
+                        z_value,
+                        lambda go=game_object, o=offset, g=group: go.get_component('object').renderz(camera_offset=o, group=g)
+                    ))
+        
+        return renderable_items
 
     def renderz(self, rect, player_rect, offset=(0, 0), group='default'):
         topleft = (rect.x // self.tile_size[0], rect.y // self.tile_size[1])
@@ -389,14 +477,14 @@ class Tilemap:
                         decor_tiles.append(tile)
                         if player_rect.colliderect(tile.rect):
                             inter = player_rect.clip(tile.rect)
-                            if min(inter.width, inter.height) >= 5:
+                            if inter.width >= 8 and inter.height >= 8:
                                 triggered.append(tile)
         for tile in offgrid_tiles:
             if 'decor' in tile.group:
                 decor_tiles.append(tile)
                 if player_rect.colliderect(tile.rect):
                     inter = player_rect.clip(tile.rect)
-                    if min(inter.width, inter.height) >= 5:
+                    if inter.width >= 8 and inter.height >= 8:
                         triggered.append(tile)
                         
         transparent_tiles = set()
@@ -412,7 +500,8 @@ class Tilemap:
                             target = 128 if tile in transparent_tiles else 255
                             if not hasattr(tile, 'current_opacity'):
                                 tile.current_opacity = 255
-                            tile.current_opacity += (target - tile.current_opacity) * 1 * G.window.dt
+                            lerp_speed = self.decor_opacity_lerp_speed_in if tile in transparent_tiles else self.decor_opacity_lerp_speed_out
+                            tile.current_opacity += (target - tile.current_opacity) * lerp_speed * G.window.dt
                             opacity = int(tile.current_opacity)
                         tile.render(offset=offset, group=group, opacity=opacity)
                         
@@ -422,7 +511,8 @@ class Tilemap:
                 target = 128 if tile in transparent_tiles else 255
                 if not hasattr(tile, 'current_opacity'):
                     tile.current_opacity = 255
-                tile.current_opacity += (target - tile.current_opacity) * 1 * G.window.dt
+                lerp_speed = self.decor_opacity_lerp_speed_in if tile in transparent_tiles else self.decor_opacity_lerp_speed_out
+                tile.current_opacity += (target - tile.current_opacity) * lerp_speed * G.window.dt
                 opacity = int(tile.current_opacity)
             tile.render(offset=offset, group=group, opacity=opacity)
 
