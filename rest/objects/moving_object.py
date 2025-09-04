@@ -7,19 +7,16 @@ from components.engine.moving_object_components import *
 from rest.utils.game_math import get_state_in_diapasone
 from rest.vfx.particles import Particle
 from rest.vfx.particles_func import *
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 WALKABLE_TILES = ['walk_zone']
 
 def apply_friction(value, amount):
     if abs(value) < amount:
-        return 0    
+        return 0
     return value - amount if value > 0 else value + amount
 
 class MovingObject(CMSEntity):
-    def __init__(self, entity_id, position=(0, 0), moving=True, z=5000000): 
+    def __init__(self, entity_id, position=(0, 0), moving=True, z=5000000):
         super().__init__(entity_id)
         self.entity_id = entity_id
         self.object = Object(entity_id, position, z)
@@ -27,7 +24,7 @@ class MovingObject(CMSEntity):
         if moving:
             self._register_input()
         self.particle_timer = 0
-        self.particle_spawn_interval = random.uniform(0.15, 0.25)  # Рандомный интервал
+        self.particle_spawn_interval = random.uniform(0.2, 0.3)
 
     def _initialize_components(self):
         return {
@@ -101,6 +98,8 @@ class MovingObject(CMSEntity):
                 return False
             if not any(tile.group in WALKABLE_TILES for tile in level_map.grid_tiles[(grid_x, grid_y)].values()):
                 return False
+            tile_type = level_map.grid_tiles.get((grid_x, grid_y), {}).get('type', 'default')
+            self.particle_spawn_interval = {'dirt': 0.15, 'sand': 0.1, 'stone': 0.3}.get(tile_type, 0.2)
         return True
 
     def _register_input(self):
@@ -111,10 +110,7 @@ class MovingObject(CMSEntity):
             {'keys': [pygame.K_DOWN, pygame.K_s], 'x': 0, 'y': 1, 'direction': 'down', 'mirror': False},
         ]
         for config in key_configs:
-            event_data = {
-                'x': config['x'], 'y': config['y'], 'direction': config['direction'],
-                'mirror': config['mirror'], 'max_speed': [70, 70]
-            }
+            event_data = {'x': config['x'], 'y': config['y'], 'direction': config['direction'], 'mirror': config['mirror'], 'max_speed': [70, 70]}
             G.input.add_key_event('holding', config['keys'], 'move', event_data, self)
             G.input.add_key_event('released', config['keys'], 'move', {**event_data, 'x': 0, 'y': 0}, self)
 
@@ -138,50 +134,38 @@ class MovingObject(CMSEntity):
             self.get_component('object').get_component('mirror').flip_x = False
         delta_move.x += self.get_component('speed').x * delta
         delta_move.y += self.get_component('speed').y * delta
-        
-        # ИСПРАВЛЕННОЕ СОЗДАНИЕ ЧАСТИЦ - МЕНЬШЕ И РЕЖЕ
+
         if delta_move.x != 0 or delta_move.y != 0:
             self.particle_timer -= delta
             particle_count = len(G.object_collections.collections.get('particles', []))
-            
-            # Уменьшенный лимит и интервал
-            if self.particle_timer <= 0 and particle_count < 50:  # Максимум 50 частиц
-                self.particle_timer = random.uniform(0.15, 0.25)  # Реже спавним (каждые 0.15-0.25 сек)
-                logging.debug(f"Particle count: {particle_count}, Spawning 1-2 particles")
+            if self.particle_timer <= 0 and particle_count < 40:
+                self.particle_timer = self.particle_spawn_interval
                 shadow = self.get_component('object').get_component('shadow')
                 shadow_anim = self.get_component('object').get_component('shadow_anim')
                 resize = self.get_component('object').get_component('resize')
                 pos = self.get_component('object').get_component('position')
                 adjusted_offset_x = (shadow.offset_x + shadow_anim.current_x_off) * resize.scale_x
                 adjusted_offset_y = (shadow.offset_y + shadow_anim.current_y_off) * resize.scale_y
-                shadow_pos = (
-                    pos.x + adjusted_offset_x,
-                    pos.y + adjusted_offset_y
+                move_dir_x, move_dir_y = delta_move.x, delta_move.y
+                spawn_offset_x = random.uniform(-6, 6) - move_dir_x * 0.05
+                spawn_offset_y = random.uniform(-3, 3) - move_dir_y * 0.05
+                shadow_pos = (pos.x + adjusted_offset_x + spawn_offset_x, pos.y + adjusted_offset_y + spawn_offset_y)
+                color = random.choice([(100, 100, 100), (120, 110, 100), (90, 85, 80), (110, 100, 90)])
+                random_velocity_x = random.uniform(-10, 10)
+                random_velocity_y = random.uniform(-4, -2)
+                random_decay = random.uniform(0.7, 1.0)
+                p = Particle(
+                    pos=shadow_pos,
+                    particle_type='particles',
+                    velocity=(random_velocity_x, random_velocity_y),
+                    decay_rate=random_decay,
+                    advance=0.0,
+                    colors={(255, 255, 255): color},
+                    z=self.get_component('object').get_component('z').val - 0.01,
+                    behavior='walk_dust'
                 )
-                
-                # Спавним только 1-2 частицы за раз
-                for _ in range(random.randint(1, 2)):
-                    color = random.choice([(80, 77, 99), (90, 87, 109), (100, 97, 119)])  # Более тусклые цвета
-                    # Более слабые параметры движения
-                    random_velocity_x = random.uniform(-8, 8)
-                    random_velocity_y = random.uniform(-3, -1)
-                    random_decay = random.uniform(0.8, 1.2)
-                    
-                    p = Particle(
-                        pos=(shadow_pos[0] + random.uniform(-4, 4), shadow_pos[1] + random.uniform(-2, 2)),
-                        particle_type='particles',
-                        velocity=(random_velocity_x, random_velocity_y),
-                        decay_rate=random_decay,
-                        advance=0.0,
-                        colors={(255, 255, 255): color},
-                        z=self.get_component('object').get_component('z').val - 0.01,  # Под игроком
-                        behavior='walk_dust'
-                    )
-                    logging.debug(f"Spawning particle at position: {p.pos}, Shadow pos: {shadow_pos}")
-                    G.object_collections.register(p, 'particles')
-            else:
-                logging.debug(f"Particle count: {particle_count}, Timer: {self.particle_timer}")
-        
+                G.object_collections.register(p, 'particles')
+
         self.move_with_physics(delta_move, level_map)
         if 'rotate' in state:
             if G.input.holded_keys_count == 0:
@@ -230,7 +214,7 @@ class MovingObject(CMSEntity):
                     collisions.right = movement.x > 0
                     collisions.left = movement.x < 0
                     self.get_component('speed').x = 0
-            obj_pos.x = int(obj_pos.x + 0.5) 
+            obj_pos.x = int(obj_pos.x + 0.5)
             obj_pos.y = int(obj_pos.y + 0.5)
         else:
             obj_pos.y += movement.y

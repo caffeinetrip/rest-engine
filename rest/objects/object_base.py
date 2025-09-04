@@ -34,7 +34,7 @@ class Object(CMSEntity):
             'outline': Outline(color=None),
             'shadow': Shadow(),
             'shadow_anim': ShadowAnimationState(),
-            'draw_position': DrawPosition(x=0,y=0)
+            'draw_position': DrawPosition(x=0, y=0)
         }
 
         sequences = self.get_component('sequences').data
@@ -142,10 +142,10 @@ class Object(CMSEntity):
         shadow_anim.target_radius = self.get_component('shadow').radius
         shadow_anim.target_x_off = 0.0
         shadow_anim.target_y_off = 0.0
-        
+
         if 'rotate' in state_value:
             shadow_anim.target_radius -= 1
-        
+
         if 'top' in state_value:
             shadow_anim.target_y_off -= 0.05
         elif 'down' in state_value:
@@ -159,7 +159,7 @@ class Object(CMSEntity):
 
         if 'idle' in state_value and self.sequence:
             sequence_duration = 0.85
-            shadow_anim.pulse_frequency = 1.0 / sequence_duration 
+            shadow_anim.pulse_frequency = 1.0 / sequence_duration
             shadow_anim.pulse_phase += 2 * math.pi * shadow_anim.pulse_frequency * delta
 
     def draw(self, surface, camera_offset=(0, 0)):
@@ -169,10 +169,10 @@ class Object(CMSEntity):
     def renderz(self, camera_offset=(0, 0), group='game'):
         if not self.get_component('show').visible:
             return
-        
+
         pos = self.draw_position(camera_offset)
         self.get_component('draw_position').x, self.get_component('draw_position').y = pos
-        
+
         shadow = self.get_component('shadow')
         shadow_anim = self.get_component('shadow_anim')
 
@@ -181,7 +181,7 @@ class Object(CMSEntity):
             if 'idle' in self.get_component('state').value:
                 effective_radius += shadow_anim.pulse_amplitude * math.sin(shadow_anim.pulse_phase)
             shadow_surface = pygame.Surface((effective_radius * 2, effective_radius * 2), pygame.SRCALPHA)
-            
+
             pygame.draw.ellipse(
                 shadow_surface,
                 shadow.color + (shadow.alpha,),
@@ -195,7 +195,7 @@ class Object(CMSEntity):
                 int(pos[0] + adjusted_offset_x - radius_diff),
                 int(pos[1] + adjusted_offset_y - radius_diff)
             )
-            
+
             G.window.blit(
                 shadow_surface,
                 shadow_pos,
@@ -210,5 +210,5 @@ class Object(CMSEntity):
             for shift in ADJACENT_DIRS:
                 G.window.blit(outline, (pos[0] + shift[0], pos[1] + shift[1]),
                               z=self.get_component('z').val - 0.000001)
-                
+
         G.window.blit(self.render_image, pos, z=self.get_component('z').val)

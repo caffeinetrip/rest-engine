@@ -6,42 +6,41 @@ from settings import settings
 from content_data.entities_data import entities
 from entities.player import PlayerEntity
 from behavior import *
-import logging
-import os
-
-logging.basicConfig(level=logging.DEBUG)
 
 class MyGame(Game):
     def __init__(self):
         super().__init__()
         init(settings)
+        
         self.camera = Camera(settings.display_size, slowness=settings.camera_slowness, pos=(5, 0))
         self.entities_data = entities
 
     def load(self):
         self.event_system = G.event_system
+        
         self.tilemap = Tilemap()
         self.tilemap.load('content_data/maps/1.pmap', spawn_hook=gen_hook())
+        
         self.player = PlayerEntity((100, 150))
+        
         G.object_collections.register(self.player.get_component('object'), 'entities')
         G.object_collections.configure_spatial_collections(['entities', 'particles'])
+        
         asset_path = 'content_data/image_data/assets'
-        if not os.path.exists(asset_path):
-            logging.error(f"Asset directory {asset_path} does not exist.")
-        else:
-            logging.debug(f"Loading assets from {asset_path}")
         G.asset_library.initialize(asset_path)
-        logging.debug(f"AssetLibrary contents: {list(G.asset_library.keys())}")
-        if 'particles' not in G.asset_library.keys():
-            logging.warning("Particles asset not loaded. Check content_data/image_data/assets/particles/")
 
     def update(self):
+        
         self.camera.set_target(self.player.get_component('object'))
         self.camera.update()
+        
         if settings.fps_bar:
             G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(145, 145, 145))
+            
         G.object_collections.update(view_area=self.camera.visible_rect)
+        
         self.player.get_component('object').physics_update(self.tilemap)
+        
         renderable_items = self.tilemap.get_renderable_items(
             self.camera.visible_rect, 
             self.player.get_component('object').get_component('object').hitbox, 
@@ -49,11 +48,15 @@ class MyGame(Game):
             group='default',
             objects_collection=G.object_collections
         )
+        
         sorted_items = sorted(renderable_items, key=lambda item: item.z)
+        
         for item in sorted_items:
             item.render()
+            
         G.object_collections.renderz(collection='particles', camera_offset=self.camera.pos)
         G.window.cycle()
+        
         G.input.update(self)
 
 if __name__ == "__main__":
