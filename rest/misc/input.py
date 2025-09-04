@@ -2,7 +2,7 @@ import pygame
 import sys
 from rest import G
 from typing import Dict, List
-
+from rest.utils.cms import CMSEntity
 class InputState:
     __slots__ = ('pressed', 'just_pressed', 'just_released', 'held_since')
 
@@ -24,8 +24,8 @@ class InputState:
     def unpress(self):
         self.pressed = False
         self.just_released = True
-
-class Mouse:
+        
+class Mouse():
     def __init__(self):
         self.pos = pygame.Vector2(0, 0)
         self.ui_pos = pygame.Vector2(0, 0)
@@ -36,6 +36,16 @@ class Mouse:
         self.movement.x, self.movement.y = mpos[0] - self.pos.x, mpos[1] - self.pos.y
         self.pos.x, self.pos.y = mpos[0], mpos[1]
         self.ui_pos.x, self.ui_pos.y = mpos[0] // 2, mpos[1] // 2
+        
+class MouseEntity(CMSEntity):
+    def __init__(self):
+        super().__init__(entity_id='mouse')
+        
+        self.components = {
+            'mouse': Mouse()
+        }
+
+
 
 class Input:
     def __init__(self):
@@ -53,7 +63,7 @@ class Input:
             '1': '!', '8': '*', '9': '(', '0': ')', ';': ':', ',': '<',
             '.': '>', '/': '?', '\'': '"', '-': '_', '=': '+',
         }
-        self.mouse_entity = None
+        self.mouse_entity = MouseEntity()
         self.event_handlers = {}
         self._action_locks = {}
         self._window_component = None
@@ -161,7 +171,7 @@ class Input:
             state.update()
 
         if self.mouse_entity:
-            mouse_comp = self.mouse_entity.get_component(Mouse)
+            mouse_comp = self.mouse_entity.get_component('mouse')
             if mouse_comp:
                 mouse_comp.update()
 
@@ -216,14 +226,14 @@ class Input:
 
     def get_mouse_position(self):
         if self.mouse_entity:
-            mouse_comp = self.mouse_entity.get_component(Mouse)
+            mouse_comp = self.mouse_entity.get_component('mouse')
             if mouse_comp:
                 return mouse_comp.pos
         return pygame.Vector2(0, 0)
 
     def get_mouse_ui_position(self):
         if self.mouse_entity:
-            mouse_comp = self.mouse_entity.get_component(Mouse)
+            mouse_comp = self.mouse_entity.get_component('mouse')
             if mouse_comp:
                 return mouse_comp.ui_pos
         return pygame.Vector2(0, 0)

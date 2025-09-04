@@ -26,7 +26,8 @@ class EventSystem:
             IOnEncounterStart: 'encounter_start',
             IOnEncounerReady: 'encounter_ready',
             IOnLoadFolder: 'load_folder',
-            IOnEntityMove: 'move'
+            IOnEntityMove: 'move',
+            IOnClick: 'click'
         }
         
         for interface, event_type in interface_map.items():

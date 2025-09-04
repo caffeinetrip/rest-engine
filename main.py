@@ -36,10 +36,21 @@ class MyGame(Game):
         
         if settings.fps_bar:
             G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(145, 145, 145))
+        
+        if G.input.mouse_pressed(1):
+            self.add_event('click', {'position': G.input.get_mouse_position()})
             
         G.object_collections.update(view_area=self.camera.visible_rect)
         
         self.player.get_component('object').physics_update(self.tilemap)
+        
+        if hasattr(G, 'sparks'):
+            dt = G.window.dt 
+            for spark in G.sparks[:]:
+                if spark.update(dt):
+                    G.sparks.remove(spark)
+                else:
+                    G.window.renderf(spark.render, offset=(0, 0), z=spark.z, group='ui')
         
         renderable_items = self.tilemap.get_renderable_items(
             self.camera.visible_rect, 

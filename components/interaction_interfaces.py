@@ -26,3 +26,8 @@ class IOnEntityMove(ABC):
     @abstractmethod
     def on_move(self, context: dict, entity: Any = None) -> Any:
         pass
+    
+class IOnClick(ABC):
+    @abstractmethod
+    def on_click(self, context: dict, entity: Any = None) -> Any:
+        pass

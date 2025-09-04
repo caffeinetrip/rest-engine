@@ -25,22 +25,17 @@ class Particle:
         self.own_offset = [1, 6]
         
         self.lifetime = 0.0
-        self.max_lifetime = random.uniform(0.4, 0.8)
-        self.fade_duration = 0.3
+        self.max_lifetime = random.uniform(0.4, 0.6)
+        self.fade_duration = 0.4
         self.fade_start_time = self.max_lifetime - self.fade_duration
         self.alpha = 150
         self.should_remove = False
         
-        self.scale = random.uniform(0.15, 0.2)
+        self.scale = random.uniform(0.1, 0.2)
         
         asset = G.asset_library[self.type]
-        if not asset:
-            raise KeyError(f"Asset '{self.type}' not found in asset library.")
-        if self.type not in asset.sequences:
-            raise KeyError(f"Sequence '{self.type}' not found for asset '{self.type}'.")
         
         self.animation = asset.sequences[self.type].copy()
-        self.animation.config['loop'] = False
         
         self.animation_speed = random.uniform(0.8, 1.2)
         self.animation.frame_index = 0
@@ -154,4 +149,5 @@ class Particle:
             int(self.pos[0] - camera_offset[0] - img.get_width() // 2 - self.own_offset[0]),
             int(self.pos[1] - camera_offset[1] - self.own_offset[1])
         )
+        
         G.window.blit(img, render_pos, z=self.z, group=group)

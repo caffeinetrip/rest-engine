@@ -1,9 +1,11 @@
-import time
 import pygame
+import time
 
 class Window:
     def __init__(self, dimensions=(800, 600), display_size=(340, 220), caption='pygpen window', flags=0, fps_cap=60, frag_path=None, screens=['default']):
         self.dimensions = dimensions
+        self.display_size = display_size
+        
         self.caption = caption
         
         self.flags = flags | pygame.DOUBLEBUF | pygame.OPENGL
@@ -29,6 +31,12 @@ class Window:
         
         self.tremor = 0
         
+        # Initialize render queue
+        self.render_queue = {name: [] for name in screens}
+        self.render_order = screens
+        self.render_count = 0
+        self.i = 0
+        
         pygame.init()
         pygame.display.set_caption(caption)
         
@@ -38,18 +46,29 @@ class Window:
         
         self.initialized_opengl = False
         self.surfaces = {name: pygame.Surface(display_size, pygame.SRCALPHA) for name in screens}
-        self.render_order = screens
 
     def add_surfaces(self, surfs):
         self.surfaces.update({name: surf for name, surf in surfs.items() if name not in self.render_order})
         self.render_order.extend(name for name in surfs if name not in self.render_order)
+    
+        for name in surfs:
+            if name not in self.render_queue:
+                self.render_queue[name] = []
 
     def blit(self, surface, pos, z=0, group='default'):
         if group in self.surfaces:
-            self.surfaces[group].blit(surface, pos)
-            
-    def draw_rect(self, rect, color=(255,0,0), group='default'):
-        pygame.draw.rect(self.surfaces.get(group), color, rect)
+            self.render_queue[group].append((z, self.i, surface, pos))
+            self.i += 1
+
+    def renderf(self, func, *args, **kwargs):
+        z = kwargs.pop('z', 0)
+        group = kwargs.pop('group', 'default')
+        if group in self.surfaces:
+            self.render_queue[group].append((z, self.i, func, args, kwargs))
+            self.i += 1
+
+    def draw_rect(self, rect, color=(255, 0, 0), group='default'):
+        pygame.draw.rect(self.surfaces.get(group, self.surfaces['default']), color, rect)
 
     def initialize_opengl(self):
         if self.initialized_opengl:
@@ -63,7 +82,6 @@ class Window:
         return len(self.frame_log) / sum(self.frame_log) if self.frame_log else 0
 
     def cycle(self):
-        
         if not self.initialized_opengl:
             self.initialize_opengl()
             
@@ -80,9 +98,22 @@ class Window:
             'tremor': self.tremor
         })
         
+        self.render_count = 0
+        for group in self.render_order:
+            if group in self.render_queue:
+                self.render_queue[group].sort()
+                self.render_count += len(self.render_queue[group])
+                for item in self.render_queue[group]:
+                    if len(item) > 4:
+                        item[2](self.surfaces[group], *item[3], **item[4])
+                    else:
+                        if item[0] != 107:
+                            self.surfaces[group].blit(item[2], item[3])
+                        else:
+                            self.surfaces[group].blit(item[2], item[3], special_flags=pygame.BLEND_RGBA_ADD)
+        
         if self.render_object:
             self.render_object.render(uniforms=shader_uniforms)
-            
         else:
             self._fallback_render(uniforms)
             
@@ -102,17 +133,16 @@ class Window:
         
         for name in self.surfaces:
             self.surfaces[name].fill((0, 0, 0, 0))
+        self.render_queue = {name: [] for name in self.render_order}
+        self.i = 0
 
     def _fallback_render(self, uniforms):
-        
         self.screen.fill(self.background_color)
-        
         for key in ('surface', 'ui_surf'):
             if key in uniforms and uniforms[key]:
                 self._render_scaled_surface(uniforms[key])
 
     def _render_scaled_surface(self, surface):
-        
         if surface.get_size() != self.screen.get_size():
             scale = min(self.screen.get_width() / surface.get_width(), self.screen.get_height() / surface.get_height())
             scaled_surface = pygame.transform.scale(surface, (int(surface.get_width() * scale), int(surface.get_height() * scale)))
@@ -120,6 +150,5 @@ class Window:
                 (self.screen.get_width() - scaled_surface.get_width()) // 2,
                 (self.screen.get_height() - scaled_surface.get_height()) // 2
             ))
-            
         else:
             self.screen.blit(surface, (0, 0))
