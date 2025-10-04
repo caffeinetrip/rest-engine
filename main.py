@@ -1,63 +1,75 @@
-import sys
+# File: game.py
 import pygame
-from cms.entities import entities
-from rest.event_system import EventSystem
-from collections import deque
+from rest import *
+from rest.utils.hooks import gen_hook
+from settings import settings
+from content_data.entities_data import entities
+from entities.player import PlayerEntity
+from behavior import *
 
-class Game:
+class MyGame(Game):
     def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((800, 600))
-        self.entities = entities.copy()
-        self.event_system = EventSystem()
-        self.event_queue = deque()
+        super().__init__()
+        init(settings)
         
-        self.encounter_ready = False
+        self.camera = Camera(settings.display_size, slowness=settings.camera_slowness, pos=(5, 0))
+        self.entities_data = entities
+
+    def load(self):
+        self.event_system = G.event_system
         
-        self.queue_event('encounter_start', {})
-    
-    def queue_event(self, event_type: str, context: dict):
-        self.event_queue.append((event_type, context))
-    
-    def process_events(self):
-        results = []
-        while self.event_queue:
-            event_type, context = self.event_queue.popleft()
-            event_results = self.event_system.trigger_event(event_type, context, self)
-            results.extend(event_results)
-        return results
-    
-    def handle_input(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                self.queue_event('space', {'entity_id': '1'})
-        return True
-    
-    def run(self):
-        clock = pygame.time.Clock()
-        running = True
+        self.tilemap = Tilemap()
+        self.tilemap.load('content_data/maps/1.pmap', spawn_hook=gen_hook())
         
-        while running:
-            
-            if not self.encounter_ready:
-                self.queue_event('encounter_ready', {})
-                self.encounter_ready = True
-            
-            running = self.handle_input()
-            
-            results = self.process_events()
-            for result in results:
-                print(result)
-            
-            self.screen.fill((0, 0, 0))
-            pygame.display.flip()
-            clock.tick(60)
+        self.player = PlayerEntity((100, 150))
         
-        pygame.quit()
-        sys.exit()
+        G.object_collections.register(self.player.get_component('object'), 'entities')
+        G.object_collections.configure_spatial_collections(['entities', 'particles'])
+        
+        asset_path = 'content_data/image_data/assets'
+        G.asset_library.initialize(asset_path)
+
+    def update(self):
+        
+        self.camera.set_target(self.player.get_component('object'))
+        self.camera.update()
+        
+        if settings.fps_bar:
+            G.text['small_font'].renderz((str(round(G.window.fps, 1))), (list(settings.display_size)[0]-20, 5), color=(145, 145, 145))
+        
+        if G.input.mouse_pressed(1):
+            self.add_event('click', {'position': G.input.get_mouse_position()})
+            
+        G.object_collections.update(view_area=self.camera.visible_rect)
+        
+        self.player.get_component('object').physics_update(self.tilemap)
+        
+        if hasattr(G, 'sparks'):
+            dt = G.window.dt 
+            for spark in G.sparks[:]:
+                if spark.update(dt):
+                    G.sparks.remove(spark)
+                else:
+                    G.window.renderf(spark.render, offset=(0, 0), z=spark.z, group='ui')
+        
+        renderable_items = self.tilemap.get_renderable_items(
+            self.camera.visible_rect, 
+            self.player.get_component('object').get_component('object').hitbox, 
+            offset=self.camera.pos,
+            group='default',
+            objects_collection=G.object_collections
+        )
+        
+        sorted_items = sorted(renderable_items, key=lambda item: item.z)
+        
+        for item in sorted_items:
+            item.render()
+            
+        G.object_collections.renderz(collection='particles', camera_offset=self.camera.pos)
+        G.window.cycle()
+        
+        G.input.update(self)
 
 if __name__ == "__main__":
-    import content.test_interactor
-    Game().run()
+    game = MyGame()
+    game.run()

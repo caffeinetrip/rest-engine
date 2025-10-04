@@ -1,0 +1,18 @@
+{
+    "uid": "particles",
+    "size": [16, 16],
+    "offset": [0, 0],
+    "transparency": [0, 0, 0],
+    "centered": true,
+    "category": "particle",
+    "sequences": {
+        "particles": {
+            "offset": [0, 0],
+            "rate": 1.0,
+            "repeat": false,
+            "frozen": false,
+            "durations": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        }
+    },
+    "initial": "particles"
+}
